@@ -6,8 +6,7 @@ iBGP over them, all brought up by Talos system extensions before kubelet starts,
 the Kubernetes API it carries.
 
 The topology is one `slipmesh.yaml`; `slipmesh-taloscfg` turns it into a per-node `ExtensionServiceConfig`
-for Talos nodes, and the same output converges a MikroTik device into the mesh. Nothing here knows about a
-particular cluster, provider or site.
+for Talos nodes, and the same output converges a MikroTik device into the mesh.
 
 ## Repositories
 
