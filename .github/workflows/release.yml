@@ -22,7 +22,7 @@ on:
         type: boolean
         default: true
       prepare:
-        description: Shell run on the tag's checkout before the release is created, such as pinning a manifest to the release's image. $IMAGE names the image, and with promote on the job is logged in to read it.
+        description: Shell run on the tag's checkout before the release is created, such as pinning a manifest to the release's image. With promote on, $IMAGE_REF names the promoted image by digest and the job is logged in to read it.
         type: string
         default: ""
       assets:
@@ -43,6 +43,8 @@ jobs:
     permissions:
       contents: read
       packages: write
+    outputs:
+      digest: ${{ steps.retag.outputs.digest }}
     steps:
       - uses: docker/setup-buildx-action@v4
 
@@ -55,7 +57,10 @@ jobs:
       # The tag is usually pushed right after the release merge, while that commit's own run is
       # still building, so wait for its image rather than fail on the race. A commit that never
       # reached main or a release branch never gets one, and the wait ends in an error.
+      # The tag is resolved to a digest once, and the retag and github-release both use that
+      # digest, so a `sha-<commit>` rewritten mid-run cannot ship.
       - name: Retag the tagged commit's image as the release
+        id: retag
         env:
           LATEST: ${{ inputs.latest-image }}
         run: |
@@ -68,9 +73,11 @@ jobs:
             echo "::error::$source does not exist - $GITHUB_REF_NAME must tag a commit that was built on main or a release-* branch"
             exit 1
           }
+          digest=$(docker buildx imagetools inspect "$source" --format '{{json .Manifest}}' | jq -r .digest)
           tags=(-t "$IMAGE:${GITHUB_REF_NAME//+/-}")
           [ "$LATEST" = true ] && tags+=(-t "$IMAGE:latest")
-          docker buildx imagetools create "${tags[@]}" "$source"
+          docker buildx imagetools create "${tags[@]}" "$IMAGE@$digest"
+          echo "digest=$digest" >> "$GITHUB_OUTPUT"
 
   github-release:
     needs: promote
@@ -95,6 +102,7 @@ jobs:
         if: inputs.prepare != ''
         env:
           PREPARE: ${{ inputs.prepare }}
+          IMAGE_REF: ${{ needs.promote.outputs.digest && format('{0}@{1}', env.IMAGE, needs.promote.outputs.digest) || '' }}
         run: bash -euo pipefail -c "$PREPARE"
 
       - name: Create the GitHub Release
