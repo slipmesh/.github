@@ -13,6 +13,10 @@ on:
         description: Also tag the promoted image `latest`. Leave off for anything released per Talos line.
         type: boolean
         default: false
+      tag:
+        description: Release tag; defaults to the tag that triggered the run.
+        type: string
+        default: ""
     outputs:
       image-ref:
         description: The promoted image by digest, for release.yml.
@@ -23,6 +27,7 @@ permissions:
 
 env:
   IMAGE: ${{ inputs.image || format('ghcr.io/{0}', github.repository) }}
+  RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
 
 jobs:
   promote:
@@ -55,11 +60,11 @@ jobs:
             sleep 30
           done
           docker buildx imagetools inspect "$source" >/dev/null || {
-            echo "::error::$source does not exist - $GITHUB_REF_NAME must tag a commit that was built on main or a release-* branch"
+            echo "::error::$source does not exist - $RELEASE_TAG must tag a commit that was built on main or a release-* branch"
             exit 1
           }
           digest=$(docker buildx imagetools inspect "$source" --format '{{json .Manifest}}' | jq -r .digest)
-          tags=(-t "$IMAGE:${GITHUB_REF_NAME//+/-}")
+          tags=(-t "$IMAGE:${RELEASE_TAG//+/-}")
           [ "$LATEST" = true ] && tags+=(-t "$IMAGE:latest")
           docker buildx imagetools create "${tags[@]}" "$IMAGE@$digest"
           echo "image-ref=$IMAGE@$digest" >> "$GITHUB_OUTPUT"
