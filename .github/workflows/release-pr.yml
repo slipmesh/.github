@@ -52,6 +52,7 @@ jobs:
           bash -euo pipefail -c "$BUMP"
           git cliff --tag "$VERSION" -o CHANGELOG.md
           git add -u
+          git add CHANGELOG.md
           git -c user.name='github-actions[bot]' \
               -c user.email='41898282+github-actions[bot]@users.noreply.github.com' \
               commit -m "chore: release $VERSION"
