@@ -1,5 +1,5 @@
-# A release tag rebuilds nothing: it retags the `sha-<commit>` image image.yml published, so what
-# ships is what was tested.
+# A release tag rebuilds nothing: it retags the `sha-<commit>` image that image.yml published, so
+# what ships is what was tested.
 name: Release
 
 on:
