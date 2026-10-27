@@ -1,5 +1,6 @@
-# A release tag rebuilds nothing: it retags the `sha-<commit>` image that image.yml published, so
-# what ships is what was tested.
+# With an image, a release tag rebuilds nothing: it retags the `sha-<commit>` image that image.yml
+# published, so what ships is what was tested. Without one, the tag's own run builds and tests
+# through rust.yml and download-binaries hands those binaries to the release.
 name: Release
 
 on:
@@ -21,6 +22,10 @@ on:
         description: Mark the GitHub Release as Latest. Turn off for releases cut from an older line.
         type: boolean
         default: true
+      download-binaries:
+        description: Download the run's rust.yml `binaries-<arch>` artifacts into `binaries/<arch>/release/` before prepare, for a repository without an image whose tag run builds its own release.
+        type: boolean
+        default: false
       prepare:
         description: Shell run on the tag's checkout before the release is created, such as pinning a manifest to the release's image. With promote on, $IMAGE_REF names the promoted image by digest and the job is logged in to read it.
         type: string
@@ -97,6 +102,13 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: actions/download-artifact@v8
+        if: inputs.download-binaries
+        with:
+          path: binaries/
+          pattern: binaries-*
+          merge-multiple: true
 
       - name: Prepare the release assets
         if: inputs.prepare != ''
