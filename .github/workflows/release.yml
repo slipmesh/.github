@@ -22,7 +22,7 @@ on:
         type: boolean
         default: true
       prepare:
-        description: Shell run on the tag's checkout before the release is created, such as pinning a manifest to the release's image.
+        description: Shell run on the tag's checkout before the release is created, such as pinning a manifest to the release's image. $IMAGE names the image, and with promote on the job is logged in to read it.
         type: string
         default: ""
       assets:
@@ -79,8 +79,17 @@ jobs:
     runs-on: ubuntu-26.04
     permissions:
       contents: write
+      packages: read
     steps:
       - uses: actions/checkout@v7
+
+      # `prepare` may take its assets out of the promoted image rather than rebuild them.
+      - uses: docker/login-action@v4
+        if: inputs.promote && inputs.prepare != ''
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Prepare the release assets
         if: inputs.prepare != ''
