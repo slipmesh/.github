@@ -26,9 +26,16 @@ on:
         description: Mark the GitHub Release as Latest. Turn off for releases cut from an older line.
         type: boolean
         default: true
+      tag:
+        description: Release tag; defaults to the tag that triggered the run. Exposed to prepare as $RELEASE_TAG.
+        type: string
+        default: ""
 
 permissions:
   contents: read
+
+env:
+  RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
 
 jobs:
   github-release:
@@ -67,7 +74,7 @@ jobs:
           LATEST: ${{ inputs.latest }}
         run: |
           read -ra assets <<<"$ASSETS"
-          gh release create "$GITHUB_REF_NAME" "${assets[@]}" \
-            --title "$GITHUB_REF_NAME" \
+          gh release create "$RELEASE_TAG" "${assets[@]}" \
+            --title "$RELEASE_TAG" \
             --generate-notes \
             --latest="$LATEST"
