@@ -1,0 +1,73 @@
+# GitHub Release for a version tag. Its assets come either out of the image promote.yml released
+# (image-ref) or from binaries rust.yml built in the tag's own run (download-binaries); neither
+# rebuilds anything here.
+name: Release
+
+on:
+  workflow_call:
+    inputs:
+      image-ref:
+        description: promote.yml's image-ref output. Exposed to prepare as $IMAGE_REF, with the job logged in to read it.
+        type: string
+        default: ""
+      download-binaries:
+        description: Download the run's rust.yml `binaries-<arch>` artifacts into `binaries/<arch>/release/` before prepare.
+        type: boolean
+        default: false
+      prepare:
+        description: Shell run on the tag's checkout before the release is created, such as pinning a manifest or staging binaries.
+        type: string
+        default: ""
+      assets:
+        description: Space-separated paths, relative to the checkout, attached to the GitHub Release.
+        type: string
+        default: ""
+      latest:
+        description: Mark the GitHub Release as Latest. Turn off for releases cut from an older line.
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+jobs:
+  github-release:
+    runs-on: ubuntu-26.04
+    permissions:
+      contents: write
+      packages: read
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: docker/login-action@v4
+        if: inputs.image-ref != ''
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: actions/download-artifact@v8
+        if: inputs.download-binaries
+        with:
+          path: binaries/
+          pattern: binaries-*
+          merge-multiple: true
+
+      - name: Prepare the release assets
+        if: inputs.prepare != ''
+        env:
+          PREPARE: ${{ inputs.prepare }}
+          IMAGE_REF: ${{ inputs.image-ref }}
+        run: bash -euo pipefail -c "$PREPARE"
+
+      - name: Create the GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ASSETS: ${{ inputs.assets }}
+          LATEST: ${{ inputs.latest }}
+        run: |
+          read -ra assets <<<"$ASSETS"
+          gh release create "$GITHUB_REF_NAME" "${assets[@]}" \
+            --title "$GITHUB_REF_NAME" \
+            --generate-notes \
+            --latest="$LATEST"
