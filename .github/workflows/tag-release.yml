@@ -6,7 +6,7 @@ on:
   workflow_call:
     outputs:
       tag:
-        description: The tag created for a `chore: release vX` commit, or empty for any other commit.
+        description: "The tag created for a `chore: release vX` commit, or empty for any other commit."
         value: ${{ jobs.tag.outputs.tag }}
 
 permissions:
