@@ -1,0 +1,112 @@
+# Checks and release build for a Rust workspace whose binaries ship for the musl targets.
+#
+# fmt and cargo audit run once. clippy, tests and the release build run on each arch's own
+# runner against the musl target that ships, so nothing is emulated or cross-compiled and the
+# binary is the same one a local `cargo build --target <arch>-unknown-linux-musl` produces.
+# musl-tools supplies the `musl-gcc` that crates with a C part (aws-lc-sys among them) build with.
+#
+# The binaries named in `binaries` are uploaded as `binaries-<arch>`, laid out as
+# `<arch>/release/<name>`, for image.yml and release.yml later in the same run.
+name: Rust
+
+on:
+  workflow_call:
+    inputs:
+      binaries:
+        description: Space-separated binary names to upload from each arch's release build.
+        type: string
+        default: ""
+      build-args:
+        description: Extra `cargo build --release` arguments, such as `-p name` to build part of a workspace.
+        type: string
+        default: ""
+
+permissions:
+  contents: read
+
+jobs:
+  fmt:
+    runs-on: ubuntu-26.04
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
+
+      - run: cargo fmt --all -- --check
+
+  # Its own job, so an advisory hit is unambiguous in the checks list rather than buried in the
+  # same log as an unrelated clippy or test failure.
+  audit:
+    runs-on: ubuntu-26.04
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+
+      - name: cargo audit
+        run: |
+          cargo install cargo-audit --locked
+          cargo audit
+
+  build:
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [amd64, arm64]
+        include:
+          - arch: amd64
+            rust_target: x86_64-unknown-linux-musl
+            runner: ubuntu-26.04
+          - arch: arm64
+            rust_target: aarch64-unknown-linux-musl
+            runner: ubuntu-26.04-arm
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install the musl toolchain
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends musl-tools
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.rust_target }}
+          components: clippy
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.rust_target }}
+
+      - name: clippy
+        run: cargo clippy --target ${{ matrix.rust_target }} --all-targets --all-features -- -D warnings
+
+      - name: test
+        run: cargo test --target ${{ matrix.rust_target }}
+
+      - name: build
+        env:
+          BUILD_ARGS: ${{ inputs.build-args }}
+        run: |
+          read -ra args <<<"$BUILD_ARGS"
+          cargo build --release --target ${{ matrix.rust_target }} "${args[@]}"
+
+      - name: Stage binaries at their TARGETARCH path
+        if: inputs.binaries != ''
+        env:
+          BINARIES: ${{ inputs.binaries }}
+        run: |
+          read -ra names <<<"$BINARIES"
+          mkdir -p "staged/${{ matrix.arch }}/release"
+          for name in "${names[@]}"; do
+            cp "target/${{ matrix.rust_target }}/release/$name" "staged/${{ matrix.arch }}/release/"
+          done
+
+      - uses: actions/upload-artifact@v7
+        if: inputs.binaries != ''
+        with:
+          name: binaries-${{ matrix.arch }}
+          path: staged/
+          if-no-files-found: error
+          retention-days: 1
