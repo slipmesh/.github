@@ -1,10 +1,5 @@
-# Release for a version tag: promote the image the tagged commit already has, then publish a
-# GitHub Release.
-#
-# Nothing is rebuilt. image.yml pushed `sha-<commit>` when the commit reached main or a release-*
-# branch, and promote retags exactly that manifest, so what ships is what was tested. The image
-# tag is the git tag with `+` swapped for `-`, since OCI tags cannot carry `+`
-# (`v1.14.4+sm.1` -> `v1.14.4-sm.1`).
+# A release tag rebuilds nothing: it retags the `sha-<commit>` image image.yml published, so what
+# ships is what was tested.
 name: Release
 
 on:

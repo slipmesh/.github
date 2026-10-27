@@ -1,10 +1,5 @@
-# Multi-arch image from binaries rust.yml built earlier in the same run.
-#
-# Each arch's image is built on that arch's own runner from `binaries-<arch>`, downloaded into
-# `target/` so a Dockerfile copies `target/${TARGETARCH}/release/<name>`. Every run builds the
-# image; a push to main or to a release-* branch also pushes each arch by digest and merges them
-# into one manifest tagged `sha-<commit>` - Docker's build-by-digest-then-merge pattern. A release
-# tag never rebuilds: release.yml retags that manifest.
+# Binaries come from rust.yml's `binaries-<arch>` artifacts; a Dockerfile copies
+# `target/${TARGETARCH}/release/<name>`. Only main and release-* publish, as `sha-<commit>`.
 name: Image
 
 on:

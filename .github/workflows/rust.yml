@@ -1,12 +1,6 @@
-# Checks and release build for a Rust workspace whose binaries ship for the musl targets.
-#
-# fmt and cargo audit run once. clippy, tests and the release build run on each arch's own
-# runner against the musl target that ships, so nothing is emulated or cross-compiled and the
-# binary is the same one a local `cargo build --target <arch>-unknown-linux-musl` produces.
-# musl-tools supplies the `musl-gcc` that crates with a C part (aws-lc-sys among them) build with.
-#
-# The binaries named in `binaries` are uploaded as `binaries-<arch>`, laid out as
-# `<arch>/release/<name>`, for image.yml and release.yml later in the same run.
+# clippy, tests and the release build run on each arch's own runner for the musl target that
+# ships, so the binary is the one a local musl build produces. musl-tools supplies the `musl-gcc`
+# that crates with a C part (aws-lc-sys among them) build with.
 name: Rust
 
 on:
