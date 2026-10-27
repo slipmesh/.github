@@ -70,7 +70,7 @@ jobs:
             sleep 30
           done
           docker buildx imagetools inspect "$source" >/dev/null || {
-            echo "::error::$source does not exist - was $GITHUB_REF_NAME tagged on a commit main or a release branch built?"
+            echo "::error::$source does not exist - $GITHUB_REF_NAME must tag a commit that was built on main or a release-* branch"
             exit 1
           }
           tags=(-t "$IMAGE:${GITHUB_REF_NAME//+/-}")
