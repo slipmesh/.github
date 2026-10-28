@@ -1,5 +1,5 @@
-# A release tag rebuilds nothing: it retags the `sha-<commit>` image that image.yml published, so
-# what ships is what was tested. This is the only shared workflow that writes packages.
+# A release tag rebuilds nothing: it retags the `sha-<commit>` image that the caller's CI
+# published, so what ships is what was tested. This is the only shared workflow that writes packages.
 name: Promote
 
 on:
@@ -38,6 +38,11 @@ jobs:
     outputs:
       image-ref: ${{ steps.retag.outputs.image-ref }}
     steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
       - uses: docker/setup-buildx-action@v4
 
       - uses: docker/login-action@v4
@@ -46,24 +51,39 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # The tag usually arrives while the commit's own run is still building its image, so wait
-      # for it rather than fail on the race. The tag is resolved to a digest once and everything
-      # after uses that digest, so a `sha-<commit>` rewritten mid-run cannot ship.
-      - name: Retag the tagged commit's image as the release
+      # A commit that changes only Markdown, such as a release commit, is not built: it releases the
+      # image of the nearest ancestor with one, if nothing but Markdown changed since. The tag
+      # usually arrives while that commit's own run is still building its image, so wait for it
+      # rather than fail on the race.
+      - name: Find the commit whose image the tag releases
+        id: source
+        run: |
+          commit=$GITHUB_SHA
+          while ! docker buildx imagetools inspect "$IMAGE:sha-$commit" >/dev/null 2>&1; do
+            parent=$(git rev-parse -q --verify "$commit^") || break
+            git diff --quiet "$parent" "$commit" -- ':!*.md' || break
+            commit=$parent
+          done
+          for _ in $(seq 60); do
+            docker buildx imagetools inspect "$IMAGE:sha-$commit" >/dev/null 2>&1 && break
+            sleep 30
+          done
+          docker buildx imagetools inspect "$IMAGE:sha-$commit" >/dev/null || {
+            echo "::error::$IMAGE:sha-$commit does not exist - $RELEASE_TAG must tag a commit built on main or a release-* branch, or one that changes only Markdown on top of it"
+            exit 1
+          }
+          [ "$commit" = "$GITHUB_SHA" ] || echo "$GITHUB_SHA changes only Markdown since $commit, releasing its image"
+          echo "source=$commit" >> "$GITHUB_OUTPUT"
+
+      # The image is resolved to a digest once and everything after uses that digest, so a
+      # `sha-<commit>` rewritten mid-run cannot ship.
+      - name: Retag the image as the release
         id: retag
         env:
           LATEST: ${{ inputs.latest }}
+          SOURCE: ${{ steps.source.outputs.source }}
         run: |
-          source="$IMAGE:sha-$GITHUB_SHA"
-          for _ in $(seq 60); do
-            docker buildx imagetools inspect "$source" >/dev/null 2>&1 && break
-            sleep 30
-          done
-          docker buildx imagetools inspect "$source" >/dev/null || {
-            echo "::error::$source does not exist - $RELEASE_TAG must tag a commit that was built on main or a release-* branch"
-            exit 1
-          }
-          digest=$(docker buildx imagetools inspect "$source" --format '{{json .Manifest}}' | jq -r .digest)
+          digest=$(docker buildx imagetools inspect "$IMAGE:sha-$SOURCE" --format '{{json .Manifest}}' | jq -r .digest)
           tags=(-t "$IMAGE:${RELEASE_TAG//+/-}")
           [ "$LATEST" = true ] && tags+=(-t "$IMAGE:latest")
           docker buildx imagetools create "${tags[@]}" "$IMAGE@$digest"
