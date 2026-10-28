@@ -1,6 +1,6 @@
 # Opens the release PR: the next version from the conventional commits since the last tag, the
 # version files moved to it, and CHANGELOG.md regenerated with git-cliff. Merging the PR releases
-# it through tag-release.yml. The commit is authored by github-actions[bot], so no personal
+# it through release-commit.yml. The commit is authored by github-actions[bot], so no personal
 # address reaches the history.
 name: Release PR
 
