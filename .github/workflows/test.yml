@@ -1,0 +1,17 @@
+# Tests for the shared workflows themselves; not meant to be called from other repositories.
+name: Test
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  promote-source:
+    runs-on: ubuntu-26.04
+    steps:
+      - uses: actions/checkout@v7
+      - run: tests/promote-source.sh .github/workflows/promote.yml
