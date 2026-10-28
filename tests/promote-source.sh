@@ -28,6 +28,8 @@ c2=$(commit README.md)                       # docs only
 c3=$(commit docs/RELEASING.md CHANGELOG.md)  # docs only
 c4=$(commit main.c README.md)                # code and docs
 c5=$(commit CHANGELOG.md)                    # docs only
+c6=$(commit docs/notes.txt)                  # not Markdown: built like code
+c7=$(commit README.md)                       # docs only
 
 fail=0
 # expect <tagged commit> <expected source, or FAIL> <commits that have an image...>
@@ -46,5 +48,7 @@ expect "$c3" "$c1" "$c1"       # two docs-only commits over a built one
 expect "$c4" "$c4" "$c1 $c4"   # the tagged commit has its own image
 expect "$c4" FAIL  "$c1"       # code changed and its image never appears
 expect "$c5" FAIL  "$c1"       # docs-only over an unbuilt code commit
+expect "$c7" "$c6" "$c1 $c4 $c6"  # a non-Markdown file under docs/ is built
+expect "$c7" FAIL  "$c1 $c4"   # ... so an older image is not released for it
 expect "$c1" FAIL              # root commit without an image
 exit $fail
