@@ -1,0 +1,37 @@
+# Tells a merged release PR from any other push: its subject is `chore: release <version>`, plus the
+# " (#N)" a squash merge appends. The caller builds and releases only when `version` is set, so
+# nothing else that lands on a branch is built.
+name: Release commit
+
+on:
+  workflow_call:
+    outputs:
+      version:
+        description: "The version a `chore: release vX` commit releases, or empty for any other commit."
+        value: ${{ jobs.version.outputs.version }}
+      prerelease:
+        description: "`true` when the version has a pre-release part, such as v1.15.0-alpha.1+sm.1."
+        value: ${{ jobs.version.outputs.prerelease }}
+
+permissions: {}
+
+jobs:
+  version:
+    runs-on: ubuntu-26.04
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      prerelease: ${{ steps.version.outputs.prerelease }}
+    steps:
+      - name: Read the version from the commit subject
+        id: version
+        env:
+          MESSAGE: ${{ github.event.head_commit.message }}
+        run: |
+          subject=${MESSAGE%%$'\n'*}
+          re='^chore: release (v[0-9][^ ]*)( \(#[0-9]+\))?$'
+          [[ $subject =~ $re ]] || exit 0
+          version=${BASH_REMATCH[1]}
+          prerelease=false
+          [[ ${version%%+*} == *-* ]] && prerelease=true
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "prerelease=$prerelease" >> "$GITHUB_OUTPUT"

@@ -10,8 +10,18 @@ permissions:
   contents: read
 
 jobs:
-  promote-source:
+  tests:
     runs-on: ubuntu-26.04
     steps:
       - uses: actions/checkout@v7
-      - run: tests/promote-source.sh .github/workflows/promote.yml
+
+      - name: Run tests/*.sh
+        run: |
+          status=0
+          for t in tests/*.sh; do
+            [ "$t" = tests/lib.sh ] && continue
+            echo "::group::$t"
+            "$t" || status=1
+            echo "::endgroup::"
+          done
+          exit $status

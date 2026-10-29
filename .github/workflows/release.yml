@@ -1,17 +1,16 @@
-# GitHub Release for a version tag. Its assets come either out of the image promote.yml released
-# (image-ref) or from binaries rust.yml built in the tag's own run (download-binaries); neither
-# rebuilds anything here.
+# GitHub Release for a tag tag-release.yml has pushed. Its assets are what the caller's run built:
+# rust-build.yml's binaries (download-binaries) or files prepare stages; nothing is rebuilt here.
 name: Release
 
 on:
   workflow_call:
     inputs:
-      image-ref:
-        description: promote.yml's image-ref output. Exposed to prepare as $IMAGE_REF, with the job logged in to read it.
+      tag:
+        description: The release tag. Exposed to prepare as $RELEASE_TAG.
         type: string
-        default: ""
+        required: true
       download-binaries:
-        description: Download the run's rust.yml `binaries-<arch>` artifacts into `binaries/<arch>/release/` before prepare.
+        description: Download the run's rust-build.yml `binaries-<arch>` artifacts into `binaries/<arch>/release/` before prepare.
         type: boolean
         default: false
       prepare:
@@ -23,26 +22,25 @@ on:
         type: string
         default: ""
       latest:
-        description: Mark the GitHub Release as Latest. Turn off for releases cut from an older line.
+        description: Mark the GitHub Release as Latest. Never for a pre-release or a release cut from an older line.
         type: boolean
-        default: true
-      tag:
-        description: Release tag; defaults to the tag that triggered the run. Exposed to prepare as $RELEASE_TAG.
-        type: string
-        default: ""
+        default: false
+      prerelease:
+        description: Mark the GitHub Release as a pre-release; release-commit.yml's prerelease output.
+        type: boolean
+        default: false
 
 permissions:
   contents: read
 
 env:
-  RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
+  RELEASE_TAG: ${{ inputs.tag }}
 
 jobs:
   github-release:
     runs-on: ubuntu-26.04
     permissions:
       contents: write
-      packages: read
     steps:
       - uses: actions/checkout@v7
         with:
@@ -52,13 +50,6 @@ jobs:
       - uses: taiki-e/install-action@5488ac5a951645ce95062214902ac4b6bc1a1037 # v2.87.32
         with:
           tool: git-cliff@2.14.2
-
-      - uses: docker/login-action@v4
-        if: inputs.image-ref != ''
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
 
       - uses: actions/download-artifact@v8
         if: inputs.download-binaries
@@ -71,20 +62,29 @@ jobs:
         if: inputs.prepare != ''
         env:
           PREPARE: ${{ inputs.prepare }}
-          IMAGE_REF: ${{ inputs.image-ref }}
         run: bash -euo pipefail -c "$PREPARE"
 
+      # The notes are the tag's CHANGELOG.md section: GitHub's generated notes would list the
+      # release PR itself and its bot author as a new contributor. A rerun after a failed upload
+      # finds the release already there and uploads its assets again.
       - name: Create the GitHub Release
+        id: release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           ASSETS: ${{ inputs.assets }}
           LATEST: ${{ inputs.latest }}
-        # The notes are the tag's CHANGELOG.md section: GitHub's generated notes would list the
-        # release PR itself and its bot author as a new contributor.
+          PRERELEASE: ${{ inputs.prerelease }}
         run: |
           read -ra assets <<<"$ASSETS"
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            echo "$RELEASE_TAG is already released"
+            [ ${#assets[@]} -eq 0 ] || gh release upload "$RELEASE_TAG" "${assets[@]}" --clobber
+            exit 0
+          fi
           git cliff --current --strip all > "$RUNNER_TEMP/notes.md"
           gh release create "$RELEASE_TAG" "${assets[@]}" \
+            --verify-tag \
             --title "$RELEASE_TAG" \
             --notes-file "$RUNNER_TEMP/notes.md" \
-            --latest="$LATEST"
+            --latest="$LATEST" \
+            --prerelease="$PRERELEASE"
