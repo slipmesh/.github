@@ -23,7 +23,7 @@ esac
 SH
 chmod +x "$bin/gh" "$bin/git-cliff"
 
-git init -q --bare "$work/origin.git"
+git init -q --bare -b main "$work/origin.git"
 scratch_repo "$work/seed"
 echo 0.2.0 > "$work/seed/VERSION"
 git -C "$work/seed" add VERSION
