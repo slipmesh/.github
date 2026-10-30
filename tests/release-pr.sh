@@ -35,10 +35,9 @@ git -C "$work/seed" remote add origin "$work/origin.git"
 git -C "$work/seed" push -q origin main
 git -C "$work/seed" tag -a v0.2.0 -m v0.2.0 && git -C "$work/seed" push -q origin v0.2.0
 
-# run <requested version> [state of an existing PR]: runs the step in a fresh clone of main, as a rerun would,
-# a minute after the previous run so its commit differs; prints its exit status, then the gh calls
-# other than `pr view`
-# run is called in a command substitution, a subshell, so the count lives in a file.
+# run <requested version> [state of an existing PR]: runs the step in a fresh clone of main, as a
+# rerun would, a minute after the previous run so its commit differs; prints its exit status, then
+# the gh calls other than `pr view`. It runs in a subshell, so the run count lives in a file.
 echo 0 > "$work/runs"
 run() {
   local n=$(( $(cat "$work/runs") + 1 )); echo $n > "$work/runs"
