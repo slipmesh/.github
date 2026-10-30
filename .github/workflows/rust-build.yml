@@ -50,7 +50,7 @@ jobs:
           BUILD_ARGS: ${{ inputs.build-args }}
         run: |
           read -ra args <<<"$BUILD_ARGS"
-          cargo build --release --target ${{ matrix.rust_target }} "${args[@]}"
+          cargo build --release --locked --target ${{ matrix.rust_target }} "${args[@]}"
 
       - name: Stage binaries at their TARGETARCH path
         env:

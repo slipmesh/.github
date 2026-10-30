@@ -28,9 +28,6 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      # cargo audit generates the Cargo.lock these repositories do not commit, with cargo.
-      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
-
       - uses: taiki-e/install-action@5488ac5a951645ce95062214902ac4b6bc1a1037 # v2.87.32
         with:
           tool: cargo-audit
@@ -63,7 +60,7 @@ jobs:
           key: ${{ matrix.rust_target }}
 
       - name: clippy
-        run: cargo clippy --target ${{ matrix.rust_target }} --all-targets --all-features -- -D warnings
+        run: cargo clippy --locked --target ${{ matrix.rust_target }} --all-targets --all-features -- -D warnings
 
       - name: test
-        run: cargo test --target ${{ matrix.rust_target }}
+        run: cargo test --locked --target ${{ matrix.rust_target }}
