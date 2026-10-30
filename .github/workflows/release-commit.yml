@@ -12,6 +12,9 @@ on:
       prerelease:
         description: "`true` when the version has a pre-release part, such as v1.15.0-alpha.1+sm.1."
         value: ${{ jobs.version.outputs.prerelease }}
+      latest:
+        description: "`true` when the version is stable and the highest of the stable tags, from whichever branch it is released."
+        value: ${{ jobs.version.outputs.latest }}
 
 permissions: {}
 
@@ -21,6 +24,7 @@ jobs:
     outputs:
       version: ${{ steps.version.outputs.version }}
       prerelease: ${{ steps.version.outputs.prerelease }}
+      latest: ${{ steps.latest.outputs.latest }}
     steps:
       - name: Read the version from the commit subject
         id: version
@@ -35,3 +39,24 @@ jobs:
           [[ ${version%%+*} == *-* ]] && prerelease=true
           echo "version=$version" >> "$GITHUB_OUTPUT"
           echo "prerelease=$prerelease" >> "$GITHUB_OUTPUT"
+
+      # sort -V orders the +sm.N revisions numerically. A release of an older line is never latest,
+      # so `releases/latest` keeps pointing at the newest line.
+      - name: Tell whether the version is the newest stable release
+        id: latest
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          PRERELEASE: ${{ steps.version.outputs.prerelease }}
+          REMOTE: ${{ github.server_url }}/${{ github.repository }}
+        run: |
+          [ -n "$VERSION" ] || exit 0
+          if [ "$PRERELEASE" = true ]; then
+            echo "latest=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          stable=$(git ls-remote --tags --refs "$REMOTE" | sed 's|.*refs/tags/||' |
+            grep -E '^v[0-9]+\.[0-9]+\.[0-9]+(\+.*)?$' || true)
+          newest=$(printf '%s\n%s\n' "$stable" "$VERSION" | grep . | sort -V | tail -1)
+          latest=false
+          [ "$newest" = "$VERSION" ] && latest=true
+          echo "latest=$latest" >> "$GITHUB_OUTPUT"
