@@ -30,11 +30,22 @@ jobs:
         id: version
         env:
           MESSAGE: ${{ github.event.head_commit.message }}
+          REMOTE: ${{ github.server_url }}/${{ github.repository }}
+        # The tag goes on only once the release is built and promoted, so a tag already on this
+        # commit means an earlier run released it: a branch cut from it or a full rerun must not
+        # rebuild it and move the published image.
         run: |
           subject=${MESSAGE%%$'\n'*}
           re='^chore: release (v[0-9][^ ]*)( \(#[0-9]+\))?$'
           [[ $subject =~ $re ]] || exit 0
           version=${BASH_REMATCH[1]}
+          refs=$(git ls-remote --tags "$REMOTE" "refs/tags/$version" "refs/tags/$version^{}")
+          tagged=$(tail -1 <<<"$refs" | cut -f1)
+          if [ -n "$tagged" ]; then
+            [ "$tagged" = "$GITHUB_SHA" ] || { echo "::error::$version already tags $tagged, not $GITHUB_SHA"; exit 1; }
+            echo "::notice::$version is already released from $GITHUB_SHA"
+            exit 0
+          fi
           prerelease=false
           [[ ${version%%+*} == *-* ]] && prerelease=true
           echo "version=$version" >> "$GITHUB_OUTPUT"

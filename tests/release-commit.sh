@@ -4,12 +4,21 @@ set -uo pipefail
 . "$(dirname "$0")/lib.sh"
 script=$(step .github/workflows/release-commit.yml version version) || { echo "FAIL: no step version"; exit 1; }
 
-# expect <commit message> <version, or empty> <prerelease, or empty>
-expect() {
+remote=$(mktemp -d)
+scratch_repo "$remote"
+git -C "$remote" commit -q --allow-empty -m one; c1=$(git -C "$remote" rev-parse HEAD)
+git -C "$remote" commit -q --allow-empty -m two; c2=$(git -C "$remote" rev-parse HEAD)
+
+# version_step <commit message>: runs the step for c2, prints "<version> <prerelease>", or
+# "failed" when the step fails
+version_step() {
   out=$(mktemp)
-  MESSAGE=$1 GITHUB_OUTPUT=$out bash -euo pipefail -c "$script" >/dev/null
-  check "${1%%$'\n'*}" "$2 $3" "$(sed -n 's/^version=//p' "$out") $(sed -n 's/^prerelease=//p' "$out")"
+  MESSAGE=$1 REMOTE=$remote GITHUB_SHA=$c2 GITHUB_OUTPUT=$out \
+    bash -euo pipefail -c "$script" >/dev/null 2>&1 || { echo failed; return; }
+  echo "$(sed -n 's/^version=//p' "$out") $(sed -n 's/^prerelease=//p' "$out")"
 }
+# expect <commit message> <version, or empty> <prerelease, or empty>
+expect() { check "${1%%$'\n'*}" "$2 $3" "$(version_step "$1")"; }
 expect 'chore: release v1.14.6+sm.1 (#25)'        v1.14.6+sm.1         false
 expect 'chore: release v1.14.6+sm.1'              v1.14.6+sm.1         false
 expect 'chore: release v0.2.5 (#9)'               v0.2.5               false
@@ -22,10 +31,18 @@ expect 'chore: release notes for v1.2.3'          '' ''
 expect 'chore: release v1.2.3 and more'           '' ''
 expect 'Revert "chore: release v1.2.3"'           '' ''
 
+# A release commit whose tag is already pushed was built and released by an earlier run; a run
+# that sees it again (a branch cut from it, a full rerun) must not rebuild and re-release it.
+git -C "$remote" tag -a v0.2.5 -m v0.2.5 "$c2"
+check "already tagged on this commit"    " "      "$(version_step 'chore: release v0.2.5 (#9)')"
+git -C "$remote" tag v0.2.6 "$c2"
+check "lightweight tag on this commit"   " "      "$(version_step 'chore: release v0.2.6 (#10)')"
+git -C "$remote" tag -a v0.2.7 -m v0.2.7 "$c1"
+check "version tags another commit"      "failed" "$(version_step 'chore: release v0.2.7 (#11)')"
+check "unreadable tags fail the version" "failed" "$(remote=$remote.missing version_step 'chore: release v0.2.8')"
+git -C "$remote" tag -l | xargs -r git -C "$remote" tag -d >/dev/null
+
 latest_script=$(step .github/workflows/release-commit.yml version latest) || { echo "FAIL: no step latest"; exit 1; }
-remote=$(mktemp -d)
-scratch_repo "$remote"
-git -C "$remote" commit -q --allow-empty -m init
 
 # latest <tags already pushed> <version> <prerelease> <latest, or empty>
 latest() {
