@@ -22,7 +22,7 @@ on:
         type: string
         default: ""
       latest:
-        description: Mark the GitHub Release as Latest. Never for a pre-release or a release cut from an older line.
+        description: Mark the GitHub Release as Latest; release-commit.yml's latest output.
         type: boolean
         default: false
       prerelease:
