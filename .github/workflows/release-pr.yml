@@ -65,7 +65,8 @@ jobs:
           # updates the PR that run opened.
           git push --force origin "$branch"
           notes=$(git cliff --tag "$VERSION" --unreleased --strip all)
-          if gh pr view "$branch" --json state --jq 'select(.state == "OPEN")' >/dev/null 2>&1; then
+          open_pr=$(gh pr view "$branch" --json state --jq 'select(.state == "OPEN")' 2>/dev/null || true)
+          if [ -n "$open_pr" ]; then
             gh pr edit "$branch" --body "$notes"
           else
             gh pr create --base "$GITHUB_REF_NAME" --head "$branch" \
