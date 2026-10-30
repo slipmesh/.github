@@ -54,8 +54,8 @@ jobs:
             echo "latest=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          stable=$(git ls-remote --tags --refs "$REMOTE" | sed 's|.*refs/tags/||' |
-            grep -E '^v[0-9]+\.[0-9]+\.[0-9]+(\+.*)?$' || true)
+          tags=$(git ls-remote --tags --refs "$REMOTE" | sed 's|.*refs/tags/||')
+          stable=$(grep -E '^v[0-9]+\.[0-9]+\.[0-9]+(\+.*)?$' <<<"$tags" || true)
           newest=$(printf '%s\n%s\n' "$stable" "$VERSION" | grep . | sort -V | tail -1)
           latest=false
           [ "$newest" = "$VERSION" ] && latest=true

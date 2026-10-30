@@ -46,4 +46,9 @@ latest 'v0.1.9'                                  v0.1.10       false true
 latest 'v0.1.10'                                 v0.1.9        false false
 latest ''                                        v0.1.0        false true
 latest 'v1.14.5+sm.1'                            ''            ''    ''
+
+out=$(mktemp)
+VERSION=v1.14.5+sm.1 PRERELEASE=false REMOTE=$remote.missing GITHUB_OUTPUT=$out \
+  bash -euo pipefail -c "$latest_script" >/dev/null 2>&1 && rc=passed || rc=failed
+check "unreadable tags fail the step" "failed " "$rc $(sed -n 's/^latest=//p' "$out")"
 exit $fail
