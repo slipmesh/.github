@@ -34,6 +34,9 @@ jobs:
         with:
           tool: git-cliff@2.14.2
 
+      - if: hashFiles('Cargo.lock') != ''
+        uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
+
       - name: Open the release PR
         id: open
         env:
@@ -55,6 +58,9 @@ jobs:
           branch="chore/release-$VERSION"
           git switch -c "$branch"
           bash -euo pipefail -c "$BUMP"
+          # Cargo.lock records the workspace's own versions too: without this the release commit
+          # fails `cargo build --locked`.
+          if [ -f Cargo.lock ]; then cargo update --workspace; fi
           git cliff --tag "$VERSION" -o CHANGELOG.md
           git add -u
           git add CHANGELOG.md

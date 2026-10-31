@@ -24,7 +24,14 @@ case " $* " in
   *) echo notes ;;
 esac
 SH
-chmod +x "$bin/gh" "$bin/git-cliff"
+# cargo: `update --workspace` marks Cargo.lock and records that it ran.
+cat > "$bin/cargo" <<'SH'
+#!/usr/bin/env bash
+echo "cargo $*" >> "$CARGO_LOG"
+[ "$*" != "update --workspace" ] || echo "# workspace at $VERSION_NUMBER" >> Cargo.lock
+SH
+chmod +x "$bin/gh" "$bin/git-cliff" "$bin/cargo"
+export CARGO_LOG=$work/cargo.log
 
 git init -q --bare -b main "$work/origin.git"
 scratch_repo "$work/seed"
@@ -73,5 +80,15 @@ check "already tagged"                  "1" "$(run v0.2.0 | head -1)"
 for bad in 1.2.3 v1.2 v01.2.3 'v1.2.3 x' 'v1.2.3;id' 'v1.2.3+' 'v1.2.3-'; do
   check "rejects '$bad'" "1" "$(run "$bad" | head -1)"
 done
+check "no Cargo.lock, no cargo" "" "$(cat "$CARGO_LOG" 2>/dev/null)"
+
+# A repository that commits Cargo.lock: the bump moves the workspace's own versions, which the
+# lockfile records too, so without an update the release commit fails `cargo build --locked`.
+echo "# lock" > "$work/seed/Cargo.lock"
+git -C "$work/seed" add Cargo.lock && git -C "$work/seed" commit -q -m "build: commit Cargo.lock"
+git -C "$work/seed" push -q origin main
+check "Cargo.lock: release PR opens" "0" "$(run v0.4.0 | head -1)"
+check "Cargo.lock: workspace updated" "cargo update --workspace" "$(cat "$CARGO_LOG")"
+check "Cargo.lock: update committed" "# workspace at 0.4.0" "$(branch_file v0.4.0 Cargo.lock | tail -1)"
 check "rejects an empty computed version" "1" "$(NEXT='' run '' | head -1)"
 exit $fail
