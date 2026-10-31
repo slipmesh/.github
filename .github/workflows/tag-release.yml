@@ -1,6 +1,6 @@
-# Tags a release commit after the caller has built it, so a failed build leaves no tag behind. A
-# rerun keeps a tag already on the commit and fails on one that names another commit. A tag pushed
-# with GITHUB_TOKEN starts no workflow, so the caller promotes and releases in the same run.
+# Tags a release commit after the caller has built and promoted it, so a failed build leaves no
+# tag. A rerun keeps a tag already on the commit and fails on one that names another commit. A tag
+# pushed with GITHUB_TOKEN starts no workflow, so the caller releases in the same run.
 name: Tag release
 
 on:
@@ -20,7 +20,7 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Tag the commit
         id: tag

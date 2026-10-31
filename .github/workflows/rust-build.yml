@@ -32,16 +32,16 @@ jobs:
             rust_target: aarch64-unknown-linux-musl
             runner: ubuntu-26.04-arm
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Install the musl toolchain
         run: sudo apt-get update && sudo apt-get install -y --no-install-recommends musl-tools
 
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
         with:
           targets: ${{ matrix.rust_target }}
 
-      - uses: Swatinem/rust-cache@v2
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
         with:
           key: ${{ matrix.rust_target }}
 
@@ -50,7 +50,7 @@ jobs:
           BUILD_ARGS: ${{ inputs.build-args }}
         run: |
           read -ra args <<<"$BUILD_ARGS"
-          cargo build --release --target ${{ matrix.rust_target }} "${args[@]}"
+          cargo build --release --locked --target ${{ matrix.rust_target }} "${args[@]}"
 
       - name: Stage binaries at their TARGETARCH path
         env:
@@ -62,9 +62,10 @@ jobs:
             cp "target/${{ matrix.rust_target }}/release/$name" "staged/${{ matrix.arch }}/release/"
           done
 
-      - uses: actions/upload-artifact@v7
+      # "Re-run failed jobs" reuses this run's artifacts instead of building again.
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: binaries-${{ matrix.arch }}
           path: staged/
           if-no-files-found: error
-          retention-days: 1
+          retention-days: 14

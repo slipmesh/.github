@@ -26,7 +26,7 @@ jobs:
       contents: write
       pull-requests: write
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
 
@@ -35,12 +35,17 @@ jobs:
           tool: git-cliff@2.14.2
 
       - name: Open the release PR
+        id: open
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           BUMP: ${{ inputs.bump }}
           REQUESTED: ${{ inputs.version }}
         run: |
           VERSION=${REQUESTED:-$(git cliff --bumped-version)}
+          # release-commit.yml takes the version from the commit subject, so one it cannot parse
+          # back would merge without releasing anything.
+          semver='^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?(\+[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$'
+          [[ $VERSION =~ $semver ]] || { echo "::error::'$VERSION' is not vMAJOR.MINOR.PATCH[-pre][+build]"; exit 1; }
           VERSION_NUMBER=${VERSION#v}
           export VERSION VERSION_NUMBER
           if git rev-parse -q --verify "refs/tags/$VERSION" >/dev/null; then
@@ -56,8 +61,15 @@ jobs:
           git -c user.name='github-actions[bot]' \
               -c user.email='41898282+github-actions[bot]@users.noreply.github.com' \
               commit -m "chore: release $VERSION"
-          git push origin "$branch"
+          # The branch belongs to this workflow: a rerun replaces what an earlier run pushed, and
+          # updates the PR that run opened.
+          git push --force origin "$branch"
           notes=$(git cliff --tag "$VERSION" --unreleased --strip all)
-          gh pr create --base "$GITHUB_REF_NAME" --head "$branch" \
-            --title "chore: release $VERSION" \
-            --body "$notes"
+          open_pr=$(gh pr view "$branch" --json state --jq 'select(.state == "OPEN")' 2>/dev/null || true)
+          if [ -n "$open_pr" ]; then
+            gh pr edit "$branch" --body "$notes"
+          else
+            gh pr create --base "$GITHUB_REF_NAME" --head "$branch" \
+              --title "chore: release $VERSION" \
+              --body "$notes"
+          fi
