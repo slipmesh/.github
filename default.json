@@ -7,6 +7,7 @@
   ],
   "semanticCommits": "enabled",
   "rebaseWhen": "behind-base-branch",
+  "baseBranchPatterns": ["$default", "/^release-\\d+\\.\\d+$/"],
   "packageRules": [
     {
       "description": "Every update is build(deps); config:recommended would make runtime ones fix(deps).",
@@ -27,6 +28,12 @@
       "description": "kube pins the k8s-openapi minor it builds against, and two k8s-openapi versions in one build fail its build script.",
       "matchPackageNames": ["kube", "kube-*", "k8s-openapi"],
       "groupName": "kube"
+    },
+    {
+      "description": "A release branch takes fixes only. A major or minor update there would be a feature, and for a dependency tagged by Talos line, another line.",
+      "matchBaseBranches": ["/^release-\\d+\\.\\d+$/"],
+      "matchUpdateTypes": ["major", "minor"],
+      "enabled": false
     }
   ]
 }

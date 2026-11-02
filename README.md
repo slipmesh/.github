@@ -7,8 +7,7 @@ Shared configuration for the slipmesh repositories: the reusable workflows under
 
 [`default.json`](default.json) is the Renovate preset these repositories share. Renovate runs self-hosted, hourly
 from 08:00 to 18:00 UTC, and only on a repository that carries its own configuration: one without is skipped, and
-no onboarding pull request is ever opened. It opens pull requests and never merges them. It works on the default
-branch only; a dependency reaches a `release-*` branch as a deliberate backport.
+no onboarding pull request is ever opened. It opens pull requests and never merges them.
 
 A repository opts in with a `renovate.json` at its root:
 
@@ -28,6 +27,11 @@ What the preset sets on top of `config:recommended`:
   in step with a release of this repository.
 - **`kube` and `k8s-openapi` move together.** `kube` pins the `k8s-openapi` minor it builds against, so they
   arrive as one pull request instead of two that each fail to build.
+- **Every release branch, fixes only.** Renovate works on the default branch and on each `release-X.Y` branch,
+  every one checked on its own. A release branch gets patch and digest updates and no minor or major one, so a
+  dependency tagged by Talos line stays on the line of the branch it is on. Its pull requests carry the branch in
+  the title, `... (release-X.Y)`, and their branches are named `renovate/release-X.Y-...`; the configuration is
+  read from the default branch only.
 - **No dependency dashboard issue, no pull request caps.** Open pull requests are the list of what is pending, and
   each run opens one for every update published since the last.
 
