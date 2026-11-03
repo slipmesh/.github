@@ -83,7 +83,8 @@ jobs:
           fi
           awk -v head="## [${RELEASE_TAG#v}]" '/^## \[/ { in_tag = index($0, head) == 1 } in_tag' \
             CHANGELOG.md > "$RUNNER_TEMP/notes.md"
-          [ -s "$RUNNER_TEMP/notes.md" ] || { echo "::error::CHANGELOG.md has no section for $RELEASE_TAG"; exit 1; }
+          # The tag stays out of the log: a workflow command would read its % and newlines.
+          [ -s "$RUNNER_TEMP/notes.md" ] || { echo "::error::CHANGELOG.md has no section for the release tag"; exit 1; }
           gh release create "$RELEASE_TAG" "${assets[@]}" \
             --verify-tag \
             --title "$RELEASE_TAG" \
