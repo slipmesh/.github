@@ -81,8 +81,9 @@ jobs:
             [ ${#assets[@]} -eq 0 ] || gh release upload "$RELEASE_TAG" "${assets[@]}" --clobber
             exit 0
           fi
-          awk -v head="## [${RELEASE_TAG#v}] " '/^## \[/ { in_tag = index($0, head) == 1 } in_tag' \
+          awk -v head="## [${RELEASE_TAG#v}]" '/^## \[/ { in_tag = index($0, head) == 1 } in_tag' \
             CHANGELOG.md > "$RUNNER_TEMP/notes.md"
+          [ -s "$RUNNER_TEMP/notes.md" ] || { echo "::error::CHANGELOG.md has no section for $RELEASE_TAG"; exit 1; }
           gh release create "$RELEASE_TAG" "${assets[@]}" \
             --verify-tag \
             --title "$RELEASE_TAG" \

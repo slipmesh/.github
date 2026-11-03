@@ -56,6 +56,7 @@ run v1.14.5+sm.1 false false '' >/dev/null
 check "notes of a section below the top one" \
   "$(printf '## [1.14.5+sm.1] - 2026-11-02\n\n### Features ✨\n\n- First')" \
   "$(cat "$work/notes.md")"
+check "no section for the tag, no release" "" "$(run v1.14.5+sm.3 false false '')"
 check "rerun uploads the assets again" "release upload v0.2.5 a b --clobber" "$(run v0.2.5 true false 'a b' 1)"
 check "rerun without assets"           ""                                   "$(run v0.2.5 true false '' 1)"
 exit $fail
