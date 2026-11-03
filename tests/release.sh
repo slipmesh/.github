@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# The GitHub Release step of release.yml, with gh and git-cliff replaced on PATH: the flags it
-# creates the release with, and that a rerun uploads the assets again instead of failing.
+# The GitHub Release step of release.yml, with gh replaced on PATH: the flags it creates the release
+# with, its notes, and that a rerun uploads the assets again instead of failing.
 set -uo pipefail
 . "$(dirname "$0")/lib.sh"
 script=$(step .github/workflows/release.yml github-release release) || { echo "FAIL: no step release"; exit 1; }
@@ -12,14 +12,43 @@ cat > "$bin/gh" <<'SH'
 echo "$*" >> "$GH_LOG"
 [ "$1 $2" != "release view" ] || [ -n "${EXISTS:-}" ]
 SH
-printf '#!/bin/sh\necho notes\n' > "$bin/git-cliff"
-chmod +x "$bin/gh" "$bin/git-cliff"
+chmod +x "$bin/gh"
+# The checkout of the tag, with the CHANGELOG.md its release PR regenerated.
+cat > "$work/CHANGELOG.md" <<'MD'
+# Changelog
+
+All notable changes to this project will be documented in this file.
+
+## [1.15.0-alpha.1+sm.1] - 2026-11-03
+
+- Pre-release
+
+## [1.14.6+sm.1] - 2026-11-03
+
+- Line release
+
+## [0.2.5] - 2026-11-03
+
+- Stable
+
+## [1.14.5+sm.2] - 2026-11-03
+
+### Bug fixes 🐛
+
+- Second
+
+## [1.14.5+sm.1] - 2026-11-02
+
+### Features ✨
+
+- First
+MD
 
 # run <tag> <latest> <prerelease> <assets> [exists]: the gh calls other than `release view`
 run() {
   log=$(mktemp)
-  env PATH="$bin:$PATH" GH_LOG="$log" RUNNER_TEMP="$work" RELEASE_TAG="$1" LATEST="$2" \
-    PRERELEASE="$3" ASSETS="$4" ${5:+EXISTS=1} bash -euo pipefail -c "$script" >/dev/null 2>&1
+  (cd "$work" && env PATH="$bin:$PATH" GH_LOG="$log" RUNNER_TEMP="$work" RELEASE_TAG="$1" LATEST="$2" \
+    PRERELEASE="$3" ASSETS="$4" ${5:+EXISTS=1} bash -euo pipefail -c "$script" >/dev/null 2>&1)
   grep -v '^release view' "$log" | sed "s|$work|\$RUNNER_TEMP|g"
 }
 check "stable, latest" \
@@ -31,6 +60,15 @@ check "line release, not latest" \
 check "pre-release" \
   "release create v1.15.0-alpha.1+sm.1 --verify-tag --title v1.15.0-alpha.1+sm.1 --notes-file \$RUNNER_TEMP/notes.md --latest=false --prerelease=true" \
   "$(run v1.15.0-alpha.1+sm.1 false true '')"
+run v1.14.5+sm.2 false false '' >/dev/null
+check "notes are the tag's CHANGELOG.md section" \
+  "$(printf '## [1.14.5+sm.2] - 2026-11-03\n\n### Bug fixes 🐛\n\n- Second')" \
+  "$(cat "$work/notes.md")"
+run v1.14.5+sm.1 false false '' >/dev/null
+check "notes of a section below the top one" \
+  "$(printf '## [1.14.5+sm.1] - 2026-11-02\n\n### Features ✨\n\n- First')" \
+  "$(cat "$work/notes.md")"
+check "no section for the tag, no release" "" "$(run v1.14.5+sm.3 false false '')"
 check "rerun uploads the assets again" "release upload v0.2.5 a b --clobber" "$(run v0.2.5 true false 'a b' 1)"
 check "rerun without assets"           ""                                   "$(run v0.2.5 true false '' 1)"
 exit $fail
