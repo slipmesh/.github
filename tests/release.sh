@@ -19,6 +19,18 @@ cat > "$work/CHANGELOG.md" <<'MD'
 
 All notable changes to this project will be documented in this file.
 
+## [1.15.0-alpha.1+sm.1] - 2026-11-03
+
+- Pre-release
+
+## [1.14.6+sm.1] - 2026-11-03
+
+- Line release
+
+## [0.2.5] - 2026-11-03
+
+- Stable
+
 ## [1.14.5+sm.2] - 2026-11-03
 
 ### Bug fixes 🐛
