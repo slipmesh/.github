@@ -64,9 +64,9 @@ jobs:
           PREPARE: ${{ inputs.prepare }}
         run: bash -euo pipefail -c "$PREPARE"
 
-      # The notes are the tag's CHANGELOG.md section: GitHub's generated notes would list the
-      # release PR itself and its bot author as a new contributor. A rerun after a failed upload
-      # finds the release already there and uploads its assets again.
+      # The notes are the tag's CHANGELOG.md section, as release-pr.yml wrote it: GitHub's generated
+      # notes would list the release PR itself and its bot author as a new contributor. A rerun
+      # after a failed upload finds the release already there and uploads its assets again.
       - name: Create the GitHub Release
         id: release
         env:
@@ -81,7 +81,7 @@ jobs:
             [ ${#assets[@]} -eq 0 ] || gh release upload "$RELEASE_TAG" "${assets[@]}" --clobber
             exit 0
           fi
-          git cliff --current --strip all > "$RUNNER_TEMP/notes.md"
+          awk '/^## \[/ { n++ } n == 1' CHANGELOG.md > "$RUNNER_TEMP/notes.md"
           gh release create "$RELEASE_TAG" "${assets[@]}" \
             --verify-tag \
             --title "$RELEASE_TAG" \
