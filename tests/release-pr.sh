@@ -43,10 +43,10 @@ git -C "$work/seed" remote add origin "$work/origin.git"
 git -C "$work/seed" push -q origin main
 git -C "$work/seed" tag -a v0.2.0 -m v0.2.0 && git -C "$work/seed" push -q origin v0.2.0
 
-# run <requested version> [state of an existing PR]: runs the step in a fresh clone of main, on the
-# branch $REF names (main by default), as a
+# run <requested version> [state of an existing PR]: runs the step in a fresh clone of main, as a
 # rerun would, a minute after the previous run so its commit differs; prints its exit status, then
-# the gh calls other than `pr view`. It runs in a subshell, so the run count lives in a file.
+# the gh calls other than `pr view`. GITHUB_REF_NAME is $REF, main by default: the clone stays on
+# main, the step only reads the name. It runs in a subshell, so the run count lives in a file.
 echo 0 > "$work/runs"
 run() {
   local n=$(( $(cat "$work/runs") + 1 )); echo $n > "$work/runs"
