@@ -44,6 +44,11 @@ jobs:
           BUMP: ${{ inputs.bump }}
           REQUESTED: ${{ inputs.version }}
         run: |
+          # The next line's alpha.0 tags the point release-X.Y left main, which this branch's history
+          # holds too: git-cliff would file what the branch released before it under that tag.
+          if [[ $GITHUB_REF_NAME =~ ^release-([0-9]+)\.([0-9]+)$ ]]; then
+            export GIT_CLIFF_IGNORE_TAGS="^v${BASH_REMATCH[1]}\.$((BASH_REMATCH[2] + 1))\.0-alpha\.0$"
+          fi
           VERSION=${REQUESTED:-$(git cliff --bumped-version)}
           # release-commit.yml takes the version from the commit subject, so one it cannot parse
           # back would merge without releasing anything.

@@ -15,12 +15,13 @@ echo "$*" >> "$GH_LOG"
 [ -n "${PR_STATE:-}" ] || exit 1
 [ "$PR_STATE" != OPEN ] || echo '{"state":"OPEN"}'
 SH
-# git-cliff: --bumped-version prints $NEXT, -o writes the changelog, anything else prints notes.
+# git-cliff: --bumped-version prints $NEXT, -o writes the changelog and records the tags it was
+# told to ignore, anything else prints notes.
 cat > "$bin/git-cliff" <<'SH'
 #!/usr/bin/env bash
 case " $* " in
   *" --bumped-version "*) echo "$NEXT" ;;
-  *" -o "*) echo "changelog" > CHANGELOG.md ;;
+  *" -o "*) echo "changelog" > CHANGELOG.md; echo "${GIT_CLIFF_IGNORE_TAGS-}" > "$CLIFF_IGNORED" ;;
   *) echo notes ;;
 esac
 SH
@@ -31,7 +32,7 @@ echo "cargo $*" >> "$CARGO_LOG"
 [ "$*" != "update --workspace" ] || echo "# workspace at $VERSION_NUMBER" >> Cargo.lock
 SH
 chmod +x "$bin/gh" "$bin/git-cliff" "$bin/cargo"
-export CARGO_LOG=$work/cargo.log
+export CARGO_LOG=$work/cargo.log CLIFF_IGNORED=$work/cliff-ignored
 
 git init -q --bare -b main "$work/origin.git"
 scratch_repo "$work/seed"
@@ -42,7 +43,8 @@ git -C "$work/seed" remote add origin "$work/origin.git"
 git -C "$work/seed" push -q origin main
 git -C "$work/seed" tag -a v0.2.0 -m v0.2.0 && git -C "$work/seed" push -q origin v0.2.0
 
-# run <requested version> [state of an existing PR]: runs the step in a fresh clone of main, as a
+# run <requested version> [state of an existing PR]: runs the step in a fresh clone of main, on the
+# branch $REF names (main by default), as a
 # rerun would, a minute after the previous run so its commit differs; prints its exit status, then
 # the gh calls other than `pr view`. It runs in a subshell, so the run count lives in a file.
 echo 0 > "$work/runs"
@@ -53,7 +55,7 @@ run() {
   git clone -q "$work/origin.git" "$clone"
   git -C "$clone" config core.hooksPath /dev/null
   (cd "$clone" && env PATH="$bin:$PATH" GH_LOG="$log" NEXT="${NEXT-v0.3.0}" ${2:+PR_STATE=$2} \
-    GITHUB_REF_NAME=main REQUESTED="$1" BUMP='echo "$VERSION_NUMBER" > VERSION' \
+    GITHUB_REF_NAME="${REF:-main}" REQUESTED="$1" BUMP='echo "$VERSION_NUMBER" > VERSION' \
     bash -euo pipefail -c "$script" >/dev/null 2>&1)
   echo $?
   grep -v '^pr view' "$log"
@@ -90,5 +92,12 @@ git -C "$work/seed" push -q origin main
 check "Cargo.lock: release PR opens" "0" "$(run v0.4.0 | head -1)"
 check "Cargo.lock: workspace updated" "cargo update --workspace" "$(cat "$CARGO_LOG")"
 check "Cargo.lock: update committed" "# workspace at 0.4.0" "$(branch_file v0.4.0 Cargo.lock | tail -1)"
+check "main ignores no tag" "" "$(run v0.5.0 >/dev/null; cat "$CLIFF_IGNORED")"
+# The next line's alpha.0 marks where this branch left main, so it is in this branch's history too,
+# and would split off the commits this branch released before it.
+check "release branch ignores the next line's alpha.0" '^v1\.15\.0-alpha\.0$' \
+  "$(REF=release-1.14 run v1.14.5+sm.9 >/dev/null; cat "$CLIFF_IGNORED")"
+check "next line's minor is a number, not a string" '^v1\.10\.0-alpha\.0$' \
+  "$(REF=release-1.9 run v1.9.1+sm.9 >/dev/null; cat "$CLIFF_IGNORED")"
 check "rejects an empty computed version" "1" "$(NEXT='' run '' | head -1)"
 exit $fail
