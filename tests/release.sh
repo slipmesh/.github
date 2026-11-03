@@ -48,8 +48,13 @@ check "line release, not latest" \
 check "pre-release" \
   "release create v1.15.0-alpha.1+sm.1 --verify-tag --title v1.15.0-alpha.1+sm.1 --notes-file \$RUNNER_TEMP/notes.md --latest=false --prerelease=true" \
   "$(run v1.15.0-alpha.1+sm.1 false true '')"
-check "notes are the newest CHANGELOG.md section" \
+run v1.14.5+sm.2 false false '' >/dev/null
+check "notes are the tag's CHANGELOG.md section" \
   "$(printf '## [1.14.5+sm.2] - 2026-11-03\n\n### Bug fixes 🐛\n\n- Second')" \
+  "$(cat "$work/notes.md")"
+run v1.14.5+sm.1 false false '' >/dev/null
+check "notes of a section below the top one" \
+  "$(printf '## [1.14.5+sm.1] - 2026-11-02\n\n### Features ✨\n\n- First')" \
   "$(cat "$work/notes.md")"
 check "rerun uploads the assets again" "release upload v0.2.5 a b --clobber" "$(run v0.2.5 true false 'a b' 1)"
 check "rerun without assets"           ""                                   "$(run v0.2.5 true false '' 1)"
