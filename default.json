@@ -7,6 +7,7 @@
   ],
   "semanticCommits": "enabled",
   "rebaseWhen": "behind-base-branch",
+  "rangeStrategy": "bump",
   "baseBranchPatterns": ["$default", "/^release-\\d+\\.\\d+$/"],
   "packageRules": [
     {
@@ -28,6 +29,11 @@
       "description": "kube pins the k8s-openapi minor it builds against, and two k8s-openapi versions in one build fail its build script.",
       "matchPackageNames": ["kube", "kube-*", "k8s-openapi"],
       "groupName": "kube"
+    },
+    {
+      "description": "Renovate takes only the newest version of each bucket, and minor and patch share one by default: a newer minor would take the patch's place and then be disabled below, leaving no update at all.",
+      "matchBaseBranches": ["/^release-\\d+\\.\\d+$/"],
+      "separateMinorPatch": true
     },
     {
       "description": "A release branch takes fixes only. A major or minor update there would be a feature, and for a dependency tagged by Talos line, another line.",
