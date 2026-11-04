@@ -29,14 +29,17 @@ What the preset sets on top of `config:recommended`:
   arrive as one pull request instead of two that each fail to build.
 - **Every release branch, fixes only.** Renovate works on the default branch and on each `release-X.Y` branch,
   every one checked on its own. A release branch gets patch and digest updates and no minor or major one, so a
-  dependency tagged by Talos line stays on the line of the branch it is on. Its pull requests carry the branch in
-  the title, `... (release-X.Y)`, and their branches are named `renovate/release-X.Y-...`; the configuration is
-  read from the default branch only.
+  dependency tagged by Talos line stays on the line of the branch it is on. A newer patch is offered even where a
+  newer minor exists, in a branch of its own. Its pull requests carry the branch in the title, `... (release-X.Y)`,
+  and their branches are named `renovate/release-X.Y-...`; the configuration is read from the default branch only.
+- **Requirements follow the lock file.** An update raises the requirement to the version it brings, `"0.23.0"` to
+  `"0.23.1"`, so `Cargo.toml` names what `Cargo.lock` resolves. A requirement that lags its lock file is raised to
+  it in a pull request of its own, and a short one becomes full, `"0.10"` to `"0.10.7"`. A library that must not
+  raise its consumers' minimum sets `"rangeStrategy": "update-lockfile"` for its `dependencies`.
 - **No dependency dashboard issue, no pull request caps.** Open pull requests are the list of what is pending, and
   each run opens one for every update published since the last.
 
-The Rust repositories commit `Cargo.lock`, so an update inside a `Cargo.toml` range arrives as a lock file change,
-and Renovate refreshes the lock file in every pull request it opens.
+The Rust repositories commit `Cargo.lock`, and Renovate refreshes it in every pull request it opens.
 
 Repositories whose pins move only in lockstep with checksums - `versions.env` in `talos-kernel` and
 `talos-installer` - carry no `renovate.json`.
