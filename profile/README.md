@@ -10,30 +10,27 @@ for Talos nodes, and the same output converges a MikroTik device into the mesh.
 
 ## Repositories
 
-**Node image pipeline.** Each repository builds and publishes on its own and consumes the others' released
-images by exact tag:
+**Node image pipeline.** Each repository builds and publishes on its own; the installer consumes the
+others' released images by exact tag or digest:
 
 | | |
 | --- | --- |
 | [talos-kernel](https://github.com/slipmesh/talos-kernel) | Talos kernel with `amneziawg.ko` built and signed in the same build, so `sig_enforce` stays on |
-| [talos-awg-extension](https://github.com/slipmesh/talos-awg-extension) | The signed module and `ext-awg`, which configures AmneziaWG interfaces and exports per-peer metrics |
-| [talos-router-extension](https://github.com/slipmesh/talos-router-extension) | BIRD and `ext-router`, which renders its OSPFv3/iBGP config and supervises it |
-| [talos-nftables-extension](https://github.com/slipmesh/talos-nftables-extension) | Static `nft` and `ext-nftables`, which applies a ruleset and keeps it applied |
-| [talos-installer](https://github.com/slipmesh/talos-installer) | Assembles a kernel and any set of extension images into a bootable installer |
+| [talos-extensions](https://github.com/slipmesh/talos-extensions) | Rust workspace behind the `ext-awg`, `ext-router` and `ext-nftables` daemons, plus `slipmesh-taloscfg`, the config generator |
+| [talos-installer](https://github.com/slipmesh/talos-installer) | Builds the system extensions around those daemons, with static BIRD and `nft`, and bakes them with the kernel into a bootable installer |
 
 **Everything else:**
 
 | | |
 | --- | --- |
-| [talos-extensions](https://github.com/slipmesh/talos-extensions) | Rust workspace behind the three daemons, plus `slipmesh-taloscfg`, the config generator |
 | [routeros](https://github.com/slipmesh/routeros) | One-shot converger that brings a MikroTik device into the mesh over the RouterOS API |
 | [cni-config](https://github.com/slipmesh/cni-config) | Minimal CNI: writes a `bridge`/`host-local` conflist for the node's own podCIDR |
-| [bird](https://github.com/slipmesh/bird) | Statically linked `bird`/`birdc` with `bird_exporter` in a `scratch` image, used by the router extension |
-| [netlink-packet-amnezia-wireguard](https://github.com/slipmesh/netlink-packet-amnezia-wireguard) | Rust crate for the AmneziaWG generic netlink family |
+| [netlink-packet-amneziawg](https://github.com/slipmesh/netlink-packet-amneziawg) | Rust crate for the AmneziaWG generic netlink family, built on `netlink-packet-wireguard` |
 
 Each repository's README covers how to build, configure and deploy it.
 
 ## License
 
-MIT or Apache-2.0 at your option, except `routeros` (AGPL-3.0-only, as it links `mikrotik-rs`), `bird`
-(BIRD's GPLv2-or-later) and `netlink-packet-amnezia-wireguard` (MIT, as its upstream).
+MIT or Apache-2.0 at your option, except `routeros` (AGPL-3.0-only, as it links `mikrotik-rs`) and
+`netlink-packet-amneziawg` (MIT, as `netlink-packet-wireguard`). The images `talos-installer` builds also
+carry third-party software, such as BIRD, each under its own license.
