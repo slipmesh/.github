@@ -45,5 +45,6 @@ Repositories whose pins move only in lockstep with checksums - `versions.env` in
 `talos-installer` - carry no `renovate.json`.
 
 A repository changes any of this for itself by adding keys next to `extends` in its own `renovate.json`. This one
-does: the actions its workflows use arrive in one pull request on Mondays. An action update reaches no caller until
-a release of this repository, and none is cut for one, so it ships with the next release made for its own sake.
+does: the actions its workflows use arrive in one pull request, updated on every run as new versions appear. An
+action update reaches no caller until a release of this repository, and none is cut for one, so that pull request is
+merged when the next release is prepared.
