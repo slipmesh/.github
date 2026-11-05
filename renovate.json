@@ -1,4 +1,12 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "extends": ["github>slipmesh/.github"]
+  "extends": ["github>slipmesh/.github"],
+  "packageRules": [
+    {
+      "description": "An action update reaches no caller until a release of this repository, and none is cut for one: a weekly pull request for all of them is enough.",
+      "matchManagers": ["github-actions"],
+      "groupName": "github actions",
+      "schedule": ["* * * * 1"]
+    }
+  ]
 }
