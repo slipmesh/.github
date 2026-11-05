@@ -11,7 +11,7 @@ for Talos nodes, and the same output converges a MikroTik device into the mesh.
 ## Repositories
 
 **Node image pipeline.** Each repository builds and publishes on its own; the installer consumes the
-others' released images by exact pin:
+others' released images by exact tag or digest:
 
 | | |
 | --- | --- |
@@ -33,4 +33,4 @@ Each repository's README covers how to build, configure and deploy it.
 
 MIT or Apache-2.0 at your option, except `routeros` (AGPL-3.0-only, as it links `mikrotik-rs`) and
 `netlink-packet-amneziawg` (MIT, as `netlink-packet-wireguard`). The images `talos-installer` builds also
-carry third-party software, such as BIRD, under its own licenses.
+carry third-party software, such as BIRD, each under its own license.
