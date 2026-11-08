@@ -1,6 +1,8 @@
 # The release binaries, built in the run that releases them, on each arch's own runner for the
 # musl target. They are uploaded as `binaries-<arch>` at `<arch>/release/<name>`, the
-# `target/${TARGETARCH}/release/<name>` path image.yml's Dockerfile copies from.
+# `target/${TARGETARCH}/release/<name>` path image.yml's Dockerfile copies from, together with
+# THIRD-PARTY-NOTICES, the licenses of the crates linked into them, which the image and the
+# GitHub Release carry.
 name: Rust build
 
 on:
@@ -52,14 +54,32 @@ jobs:
           read -ra args <<<"$BUILD_ARGS"
           cargo build --release --locked --target ${{ matrix.rust_target }} "${args[@]}"
 
-      - name: Stage binaries at their TARGETARCH path
+      - uses: taiki-e/install-action@682ce6c3c696a4cd5168a05f98e51aa02b877941 # v2.89.1
+        with:
+          tool: cargo-about
+
+      # Licenses such as BSD-3-Clause hold only if their notices travel with the binary. The
+      # caller's about.toml lists the accepted licenses and about.hbs renders them; --fail refuses
+      # a crate whose license cannot be determined.
+      - name: Third-party notices for this arch's dependency graph
+        id: notices
         env:
+          RUST_TARGET: ${{ matrix.rust_target }}
+        run: |
+          cargo about generate --locked --workspace --fail --target "$RUST_TARGET" \
+            -o "target/$RUST_TARGET/release/THIRD-PARTY-NOTICES" about.hbs
+
+      - name: Stage binaries and notices at their TARGETARCH path
+        id: stage
+        env:
+          ARCH: ${{ matrix.arch }}
+          RUST_TARGET: ${{ matrix.rust_target }}
           BINARIES: ${{ inputs.binaries }}
         run: |
           read -ra names <<<"$BINARIES"
-          mkdir -p "staged/${{ matrix.arch }}/release"
-          for name in "${names[@]}"; do
-            cp "target/${{ matrix.rust_target }}/release/$name" "staged/${{ matrix.arch }}/release/"
+          mkdir -p "staged/$ARCH/release"
+          for name in "${names[@]}" THIRD-PARTY-NOTICES; do
+            cp "target/$RUST_TARGET/release/$name" "staged/$ARCH/release/"
           done
 
       # "Re-run failed jobs" reuses this run's artifacts instead of building again.

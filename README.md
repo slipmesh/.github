@@ -3,6 +3,21 @@
 Shared configuration for the slipmesh repositories: the reusable workflows under
 [`.github/workflows/`](.github/workflows/), and the Renovate preset described below.
 
+## Third-party licenses
+
+A Rust repository calling these workflows carries three files at its root:
+
+- `deny.toml`, the [cargo-deny](https://embarkstudios.github.io/cargo-deny/) policy that `rust.yml`'s `licenses`
+  job checks every pull request against: the licenses its dependencies may carry, given the repository's own, and
+  the sources it takes crates from.
+- `about.toml` and `about.hbs`, the [cargo-about](https://embarkstudios.github.io/cargo-about/) configuration and
+  template `rust-build.yml` renders into `THIRD-PARTY-NOTICES` for each arch's dependency graph.
+
+`THIRD-PARTY-NOTICES` lands next to the binaries, at `<arch>/release/THIRD-PARTY-NOTICES` in the `binaries-<arch>`
+artifact. A Dockerfile copies it from `target/${TARGETARCH}/release/` into the image. A GitHub Release keeps one
+asset per file name, so `release.yml`'s `assets` names one arch's copy from `binaries/<arch>/release/`, or `prepare`
+renames both to `THIRD-PARTY-NOTICES-<arch>`.
+
 ## Renovate preset
 
 [`default.json`](default.json) is the Renovate preset these repositories share. Renovate runs self-hosted, hourly
