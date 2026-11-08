@@ -100,6 +100,7 @@ jobs:
           docker buildx bake -f "$RUNNER_TEMP/bake.json" --metadata-file "$RUNNER_TEMP/metadata.json" image
 
       - name: Export digest
+        id: digest
         if: inputs.push
         run: |
           digest=$(jq -er '.image["containerimage.digest"]' "$RUNNER_TEMP/metadata.json")

@@ -12,13 +12,23 @@ permissions:
 jobs:
   tests:
     runs-on: ubuntu-26.04
+    # tests/image.sh pushes to it the way image.yml pushes to ghcr.io.
+    services:
+      registry:
+        image: registry:3
+        ports: ["5000:5000"]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      # The same builder image.yml runs on, for tests/image.sh.
+      # The same builder image.yml runs on, for tests/image.sh; host networking lets it reach the
+      # job's registry on localhost.
       - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+        with:
+          driver-opts: network=host
 
       - name: Run tests/*.sh
+        env:
+          TEST_REGISTRY: localhost:5000
         run: |
           status=0
           for t in tests/*.sh; do

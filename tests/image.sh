@@ -6,6 +6,7 @@ set -uo pipefail
 . "$(dirname "$0")/lib.sh"
 script=$(step .github/workflows/image.yml build build) || { echo "FAIL: no step build"; exit 1; }
 placeholders=$(step .github/workflows/image.yml build placeholders) || { echo "FAIL: no step placeholders"; exit 1; }
+digest=$(step .github/workflows/image.yml build digest) || { echo "FAIL: no step digest"; exit 1; }
 
 # A pull request's check builds from placeholders where the release build has binaries.
 pw=$(mktemp -d)
@@ -38,6 +39,23 @@ check "the caller's image is kept" "app" "$(cat "$work/out/app" 2>/dev/null)"
 check "notices on top of it" "THIRD-PARTY-NOTICES COPYRIGHT-rust-std.html COPYRIGHT-musl" \
   "$(for n in THIRD-PARTY-NOTICES COPYRIGHT-rust-std.html COPYRIGHT-musl; do cat "$work/out/usr/share/licenses/demo/$n" 2>/dev/null; done | tr '\n' ' ' | sed 's/ $//')"
 check "nothing else in the licenses directory" "3" "$(ls "$work/out/usr/share/licenses/demo" 2>/dev/null | wc -l | tr -d ' ')"
+
+# The release path, against a registry the test runs: push by digest, read the digest the way the
+# export step does, and find the image under it.
+if [ -n "${TEST_REGISTRY:-}" ]; then
+  : > "$work/github-output"
+  env ARCH="$arch" REPO_NAME=demo RUNNER_TEMP="$work" \
+    OUTPUT="type=image,name=$TEST_REGISTRY/demo,push-by-digest=true,name-canonical=true,push=true" \
+    bash -euo pipefail -c "$script" >"$work/log" 2>&1
+  check "pushes by digest" "0" "$?"
+  (env RUNNER_TEMP="$work" bash -euo pipefail -c "$digest" >/dev/null 2>&1)
+  check "exports the digest" "0" "$?"
+  pushed=$(ls "$work/digests" 2>/dev/null)
+  docker buildx imagetools inspect "$TEST_REGISTRY/demo@sha256:$pushed" >/dev/null 2>&1
+  check "the digest names the pushed image" "0" "$?"
+else
+  echo "skip the push: no TEST_REGISTRY"
+fi
 
 rm -rf "$work/out" "target/$arch/release/COPYRIGHT-musl"
 check "a missing notice fails" "1" "$(run)"
