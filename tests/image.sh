@@ -32,7 +32,9 @@ for n in THIRD-PARTY-NOTICES COPYRIGHT-rust-std.html COPYRIGHT-musl; do echo "$n
 run() {
   env ARCH="$arch" REPO_NAME=demo OUTPUT="type=local,dest=$work/out" RUNNER_TEMP="$work" \
     bash -euo pipefail -c "$script" >"$work/log" 2>&1
-  echo $?
+  local status=$?
+  [ $status -eq 0 ] || tail -15 "$work/log" >&2
+  echo $status
 }
 check "builds" "0" "$(run)"
 check "the caller's image is kept" "app" "$(cat "$work/out/app" 2>/dev/null)"
