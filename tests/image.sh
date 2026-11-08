@@ -30,23 +30,24 @@ for n in THIRD-PARTY-NOTICES COPYRIGHT-rust-std.html COPYRIGHT-musl; do echo "$n
 
 # run: exit status
 run() {
-  env ARCH="$arch" REPO_NAME=demo OUTPUT="type=local,dest=$work/out" RUNNER_TEMP="$work" \
+  env ARCH="$arch" REPO_NAME=demo OUTPUT="type=local,dest=$work/repo/out" RUNNER_TEMP="$work" \
+    BUILDX_BAKE_ENTITLEMENTS_FS=1 \
     bash -euo pipefail -c "$script" >"$work/log" 2>&1
   local status=$?
   [ $status -eq 0 ] || tail -15 "$work/log" >&2
   echo $status
 }
 check "builds" "0" "$(run)"
-check "the caller's image is kept" "app" "$(cat "$work/out/app" 2>/dev/null)"
+check "the caller's image is kept" "app" "$(cat "$work/repo/out/app" 2>/dev/null)"
 check "notices on top of it" "THIRD-PARTY-NOTICES COPYRIGHT-rust-std.html COPYRIGHT-musl" \
-  "$(for n in THIRD-PARTY-NOTICES COPYRIGHT-rust-std.html COPYRIGHT-musl; do cat "$work/out/usr/share/licenses/demo/$n" 2>/dev/null; done | tr '\n' ' ' | sed 's/ $//')"
-check "nothing else in the licenses directory" "3" "$(ls "$work/out/usr/share/licenses/demo" 2>/dev/null | wc -l | tr -d ' ')"
+  "$(for n in THIRD-PARTY-NOTICES COPYRIGHT-rust-std.html COPYRIGHT-musl; do cat "$work/repo/out/usr/share/licenses/demo/$n" 2>/dev/null; done | tr '\n' ' ' | sed 's/ $//')"
+check "nothing else in the licenses directory" "3" "$(ls "$work/repo/out/usr/share/licenses/demo" 2>/dev/null | wc -l | tr -d ' ')"
 
 # The release path, against a registry the test runs: push by digest, read the digest the way the
 # export step does, and find the image under it.
 if [ -n "${TEST_REGISTRY:-}" ]; then
   : > "$work/github-output"
-  env ARCH="$arch" REPO_NAME=demo RUNNER_TEMP="$work" \
+  env ARCH="$arch" REPO_NAME=demo RUNNER_TEMP="$work" BUILDX_BAKE_ENTITLEMENTS_FS=1 \
     OUTPUT="type=image,name=$TEST_REGISTRY/demo,push-by-digest=true,name-canonical=true,push=true" \
     bash -euo pipefail -c "$script" >"$work/log" 2>&1
   check "pushes by digest" "0" "$?"
@@ -59,6 +60,6 @@ else
   echo "skip the push: no TEST_REGISTRY"
 fi
 
-rm -rf "$work/out" "target/$arch/release/COPYRIGHT-musl"
+rm -rf "$work/repo/out" "target/$arch/release/COPYRIGHT-musl"
 check "a missing notice fails" "1" "$(run)"
 exit $fail

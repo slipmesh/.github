@@ -79,7 +79,8 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # One bake: `app` is the caller's Dockerfile as it is, `image` is `app` plus the notices.
+      # One bake: `app` is the caller's Dockerfile as it is, `image` is `app` plus the notices. The
+      # notices' context lies outside the checkout, which bake reads only when allowed to.
       - name: Build the image and push it by digest
         id: build
         env:
@@ -97,7 +98,8 @@ jobs:
               image: {context: $notices, contexts: {app: "target:app"}, platforms: [$platform],
                 "dockerfile-inline": "FROM app\nCOPY . /usr/share/licenses/\($repo)/\n",
                 output: [$output]}}}' > "$RUNNER_TEMP/bake.json"
-          docker buildx bake -f "$RUNNER_TEMP/bake.json" --metadata-file "$RUNNER_TEMP/metadata.json" image
+          docker buildx bake --allow="fs.read=$notices" -f "$RUNNER_TEMP/bake.json" \
+            --metadata-file "$RUNNER_TEMP/metadata.json" image
 
       - name: Export digest
         id: digest
