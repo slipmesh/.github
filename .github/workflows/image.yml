@@ -90,7 +90,7 @@ jobs:
           notices=$RUNNER_TEMP/notices
           mkdir -p "$notices"
           for notice in THIRD-PARTY-NOTICES COPYRIGHT-rust-std.html COPYRIGHT-musl; do
-            cp "target/$ARCH/release/$notice" "$notices/"
+            install -m 0644 "target/$ARCH/release/$notice" "$notices/"
           done
           jq -n --arg app "$PWD" --arg notices "$notices" --arg platform "linux/$ARCH" \
             --arg repo "$REPO_NAME" --arg output "$OUTPUT" '{target: {
