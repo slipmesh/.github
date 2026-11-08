@@ -35,7 +35,9 @@ jobs:
       - run: cargo audit
 
   # The caller's deny.toml is the policy: the licenses its own license can ship with, and the
-  # registries and git sources it takes crates from. A repository without one fails here.
+  # registries and git sources it takes crates from. A repository without one fails here. One that
+  # ships binaries renders its notices too, over every target, so a license its about.toml does not
+  # accept fails the pull request rather than rust-build.yml's release build.
   licenses:
     runs-on: ubuntu-26.04
     steps:
@@ -43,9 +45,13 @@ jobs:
 
       - uses: taiki-e/install-action@cfdb7ed4ccc7c7dce37759eae89dc5674b469b39 # v2.90.3
         with:
-          tool: cargo-deny
+          tool: cargo-deny,cargo-about
 
       - run: cargo deny --locked check licenses bans sources
+
+      - name: cargo about
+        if: hashFiles('about.toml') != ''
+        run: cargo about generate --locked --workspace --fail -o /dev/null about.hbs
 
   test:
     runs-on: ${{ matrix.runner }}

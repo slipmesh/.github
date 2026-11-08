@@ -48,7 +48,7 @@ MD
 run() {
   log=$(mktemp)
   (cd "$work" && env PATH="$bin:$PATH" GH_LOG="$log" RUNNER_TEMP="$work" RELEASE_TAG="$1" LATEST="$2" \
-    PRERELEASE="$3" ASSETS="$4" ${5:+EXISTS=1} bash -euo pipefail -c "$script" >/dev/null 2>&1)
+    PRERELEASE="$3" ASSETS="$4" DOWNLOAD_BINARIES="${DOWNLOAD:-false}" ${5:+EXISTS=1} bash -euo pipefail -c "$script" >/dev/null 2>&1)
   grep -v '^release view' "$log" | sed "s|$work|\$RUNNER_TEMP|g"
 }
 check "stable, latest" \
@@ -69,6 +69,10 @@ check "notes of a section below the top one" \
   "$(printf '## [1.14.5+sm.1] - 2026-11-02\n\n### Features ✨\n\n- First')" \
   "$(cat "$work/notes.md")"
 check "no section for the tag, no release" "" "$(run v1.14.5+sm.3 false false '')"
+n=binaries/amd64/release
+check "downloaded binaries bring their notices" \
+  "release create v0.2.5 a $n/THIRD-PARTY-NOTICES $n/COPYRIGHT-rust-std.html $n/COPYRIGHT-musl --verify-tag --title v0.2.5 --notes-file \$RUNNER_TEMP/notes.md --latest=true --prerelease=false" \
+  "$(DOWNLOAD=true run v0.2.5 true false a)"
 check "rerun uploads the assets again" "release upload v0.2.5 a b --clobber" "$(run v0.2.5 true false 'a b' 1)"
 check "rerun without assets"           ""                                   "$(run v0.2.5 true false '' 1)"
 exit $fail

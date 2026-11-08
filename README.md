@@ -11,12 +11,17 @@ A Rust repository calling these workflows carries three files at its root:
   job checks every pull request against: the licenses its dependencies may carry, given the repository's own, and
   the sources it takes crates from.
 - `about.toml` and `about.hbs`, the [cargo-about](https://embarkstudios.github.io/cargo-about/) configuration and
-  template `rust-build.yml` renders into `THIRD-PARTY-NOTICES` for each arch's dependency graph.
+  template the notices are rendered from. A repository that ships no binaries can leave them out; one that has them
+  gets them rendered in every pull request too, so a license `about.toml` does not accept fails there.
 
-`THIRD-PARTY-NOTICES` lands next to the binaries, at `<arch>/release/THIRD-PARTY-NOTICES` in the `binaries-<arch>`
-artifact. A Dockerfile copies it from `target/${TARGETARCH}/release/` into the image. A GitHub Release keeps one
-asset per file name, so `release.yml`'s `assets` names one arch's copy from `binaries/<arch>/release/`, or `prepare`
-renames both to `THIRD-PARTY-NOTICES-<arch>`.
+Every binary ships with three notices, staged next to it at `<arch>/release/` in the `binaries-<arch>` artifact:
+
+- `THIRD-PARTY-NOTICES`, the crates it links, covering both arches' dependency graphs, so every copy is the same.
+- `COPYRIGHT-rust-std.html`, the standard library and what it is built from, as the toolchain ships it.
+- `COPYRIGHT-musl`, the C library the musl target links statically.
+
+A Dockerfile copies them from `target/${TARGETARCH}/release/` into the image. `release.yml` with `download-binaries`
+attaches them to the GitHub Release.
 
 ## Renovate preset
 

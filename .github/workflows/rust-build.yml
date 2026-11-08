@@ -1,8 +1,9 @@
 # The release binaries, built in the run that releases them, on each arch's own runner for the
 # musl target. They are uploaded as `binaries-<arch>` at `<arch>/release/<name>`, the
-# `target/${TARGETARCH}/release/<name>` path image.yml's Dockerfile copies from, together with
-# THIRD-PARTY-NOTICES, the licenses of the crates linked into them, which the image and the
-# GitHub Release carry.
+# `target/${TARGETARCH}/release/<name>` path image.yml's Dockerfile copies from, together with the
+# notices of everything linked into them, which the image and the GitHub Release carry:
+# THIRD-PARTY-NOTICES for the crates, COPYRIGHT-rust-std.html for the standard library and
+# COPYRIGHT-musl for the C library.
 name: Rust build
 
 on:
@@ -58,16 +59,25 @@ jobs:
         with:
           tool: cargo-about
 
-      # Licenses such as BSD-3-Clause hold only if their notices travel with the binary. The
-      # caller's about.toml lists the accepted licenses and about.hbs renders them; --fail refuses
-      # a crate whose license cannot be determined.
-      - name: Third-party notices for this arch's dependency graph
+      # Licenses such as BSD-3-Clause and MIT hold only if their notices travel with the binary.
+      # The caller's about.toml lists the accepted licenses and about.hbs renders them; --fail
+      # refuses a crate whose license cannot be determined. The crates' notices cover both arches,
+      # NOTICE_TARGETS being the matrix's targets, so every copy is the same file. Rust links its
+      # own musl libc.a and ships no notice for it; the musl package's copyright is that of the
+      # same project, under the same license.
+      - name: Third-party notices
         id: notices
         env:
           RUST_TARGET: ${{ matrix.rust_target }}
+          NOTICE_TARGETS: x86_64-unknown-linux-musl aarch64-unknown-linux-musl
+          MUSL_COPYRIGHT: /usr/share/doc/musl/copyright
         run: |
-          cargo about generate --locked --workspace --fail --target "$RUST_TARGET" \
-            -o "target/$RUST_TARGET/release/THIRD-PARTY-NOTICES" about.hbs
+          out=target/$RUST_TARGET/release
+          read -ra targets <<<"$NOTICE_TARGETS"
+          cargo about generate --locked --workspace --fail "${targets[@]/#/--target=}" \
+            -o "$out/THIRD-PARTY-NOTICES" about.hbs
+          cp "$(rustc --print sysroot)/share/doc/rust/COPYRIGHT-library.html" "$out/COPYRIGHT-rust-std.html"
+          cp "$MUSL_COPYRIGHT" "$out/COPYRIGHT-musl"
 
       - name: Stage binaries and notices at their TARGETARCH path
         id: stage
@@ -78,7 +88,7 @@ jobs:
         run: |
           read -ra names <<<"$BINARIES"
           mkdir -p "staged/$ARCH/release"
-          for name in "${names[@]}" THIRD-PARTY-NOTICES; do
+          for name in "${names[@]}" THIRD-PARTY-NOTICES COPYRIGHT-rust-std.html COPYRIGHT-musl; do
             cp "target/$RUST_TARGET/release/$name" "staged/$ARCH/release/"
           done
 
