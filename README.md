@@ -20,8 +20,14 @@ Every binary ships with three notices, staged next to it at `<arch>/release/` in
 - `COPYRIGHT-rust-std.html`, the standard library and what it is built from, as the toolchain ships it.
 - `COPYRIGHT-musl`, the C library the musl target links statically.
 
-A Dockerfile copies them from `target/${TARGETARCH}/release/` into the image. `release.yml` with `download-binaries`
-attaches them to the GitHub Release.
+`image.yml` lays them on top of the image the caller's Dockerfile builds, at `/usr/share/licenses/<repo>/`, from a
+build context of their own: the Dockerfile and its `.dockerignore` need nothing for them. `release.yml` with
+`download-binaries` attaches them to the GitHub Release.
+
+A repository that ships an image checks its Dockerfile in every pull request by calling `image.yml` with `push: false`
+and `binaries` naming what the Dockerfile copies. That builds the image from empty files at the binaries' paths and
+pushes nothing, so a `COPY` the release build would fail on fails the pull request. The job still needs
+`packages: write`, which `image.yml` declares for its release build.
 
 ## Renovate preset
 
