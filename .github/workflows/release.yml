@@ -10,7 +10,7 @@ on:
         type: string
         required: true
       download-binaries:
-        description: Download the run's rust-build.yml `binaries-<arch>` artifacts into `binaries/<arch>/release/` before prepare.
+        description: Download the run's rust-build.yml `binaries-<arch>` artifacts into `binaries/<arch>/release/` before prepare, and attach their notices.
         type: boolean
         default: false
       prepare:
@@ -62,16 +62,23 @@ jobs:
 
       # The notes are the tag's CHANGELOG.md section, as release-pr.yml wrote it: GitHub's generated
       # notes would list the release PR itself and its bot author as a new contributor. A rerun
-      # after a failed upload finds the release already there and uploads its assets again.
+      # after a failed upload finds the release already there and uploads its assets again. Every
+      # arch's notices are the same files, so amd64's are the ones attached.
       - name: Create the GitHub Release
         id: release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           ASSETS: ${{ inputs.assets }}
+          DOWNLOAD_BINARIES: ${{ inputs.download-binaries }}
           LATEST: ${{ inputs.latest }}
           PRERELEASE: ${{ inputs.prerelease }}
         run: |
           read -ra assets <<<"$ASSETS"
+          if [ "$DOWNLOAD_BINARIES" = true ]; then
+            for notice in THIRD-PARTY-NOTICES COPYRIGHT-rust-std.html COPYRIGHT-musl; do
+              assets+=("binaries/amd64/release/$notice")
+            done
+          fi
           if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
             echo "$RELEASE_TAG is already released"
             [ ${#assets[@]} -eq 0 ] || gh release upload "$RELEASE_TAG" "${assets[@]}" --clobber
