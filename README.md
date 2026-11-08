@@ -14,9 +14,9 @@ A Rust repository calling these workflows carries three files at its root:
   template `rust-build.yml` renders into `THIRD-PARTY-NOTICES` for each arch's dependency graph.
 
 `THIRD-PARTY-NOTICES` lands next to the binaries, at `<arch>/release/THIRD-PARTY-NOTICES` in the `binaries-<arch>`
-artifact. A Dockerfile copies it from `target/${TARGETARCH}/release/` into the image. A GitHub Release keeps one asset per
-file name, so `release.yml`'s `assets` names one arch's copy from `binaries/<arch>/release/`, or `prepare` renames
-both to `THIRD-PARTY-NOTICES-<arch>`.
+artifact. A Dockerfile copies it from `target/${TARGETARCH}/release/` into the image. A GitHub Release keeps one
+asset per file name, so `release.yml`'s `assets` names one arch's copy from `binaries/<arch>/release/`, or `prepare`
+renames both to `THIRD-PARTY-NOTICES-<arch>`.
 
 ## Renovate preset
 
