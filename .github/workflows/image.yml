@@ -1,6 +1,9 @@
 # The image of a release commit, from the run's rust-build.yml `binaries-<arch>` artifacts; a
-# Dockerfile copies `target/${TARGETARCH}/release/<name>`. It is pushed as `sha-<commit>` for
-# promote.yml to retag.
+# Dockerfile copies `target/${TARGETARCH}/release/<name>`. The binaries' notices are laid on top of
+# what it builds, at /usr/share/licenses/<repo>/, from a context of their own, so neither the
+# caller's Dockerfile nor its .dockerignore decides whether they ship. It is pushed as
+# `sha-<commit>` for promote.yml to retag. With push off, a pull request builds the same image
+# from placeholders and keeps nothing, so a Dockerfile the release build would fail on fails there.
 name: Image
 
 on:
@@ -10,6 +13,14 @@ on:
         description: Image repository; defaults to ghcr.io/<owner>/<repo>.
         type: string
         default: ""
+      push:
+        description: Build from the run's binaries and push. Off, a pull request's check builds from placeholders and pushes nothing.
+        type: boolean
+        default: true
+      binaries:
+        description: Space-separated binary names the Dockerfile copies; the placeholders a check builds from when push is off.
+        type: string
+        default: ""
 
 permissions:
   contents: read
@@ -17,6 +28,7 @@ permissions:
 
 env:
   IMAGE: ${{ inputs.image || format('ghcr.io/{0}', github.repository) }}
+  REPO_NAME: ${{ github.event.repository.name }}
 
 jobs:
   build:
@@ -34,9 +46,26 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        if: inputs.push
         with:
           name: binaries-${{ matrix.arch }}
           path: target/
+
+      # The Dockerfile and its .dockerignore are what a check is after, not the binaries: empty
+      # files at the paths the release build stages them at fail the same COPY a release would.
+      - name: Placeholders for the binaries and notices
+        id: placeholders
+        if: ${{ !inputs.push }}
+        env:
+          ARCH: ${{ matrix.arch }}
+          BINARIES: ${{ inputs.binaries }}
+        run: |
+          read -ra names <<<"$BINARIES"
+          [ ${#names[@]} -gt 0 ] || { echo "::error::a check without push needs the binaries input"; exit 1; }
+          mkdir -p "target/$ARCH/release"
+          for name in "${names[@]}" THIRD-PARTY-NOTICES COPYRIGHT-rust-std.html COPYRIGHT-musl; do
+            : > "target/$ARCH/release/$name"
+          done
 
       - name: Restore the executable bit the artifact store drops
         run: chmod +x target/${{ matrix.arch }}/release/*
@@ -44,28 +73,43 @@ jobs:
       - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
 
       - uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
+        if: inputs.push
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      # One bake: `app` is the caller's Dockerfile as it is, `image` is `app` plus the notices.
       - name: Build the image and push it by digest
         id: build
-        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
-        with:
-          context: .
-          platforms: linux/${{ matrix.arch }}
-          outputs: type=image,name=${{ env.IMAGE }},push-by-digest=true,name-canonical=true,push=true
+        env:
+          ARCH: ${{ matrix.arch }}
+          OUTPUT: ${{ inputs.push && format('type=image,name={0},push-by-digest=true,name-canonical=true,push=true', env.IMAGE) || 'type=cacheonly' }}
+        run: |
+          notices=$RUNNER_TEMP/notices
+          mkdir -p "$notices"
+          for notice in THIRD-PARTY-NOTICES COPYRIGHT-rust-std.html COPYRIGHT-musl; do
+            cp "target/$ARCH/release/$notice" "$notices/"
+          done
+          jq -n --arg app "$PWD" --arg notices "$notices" --arg platform "linux/$ARCH" \
+            --arg repo "$REPO_NAME" --arg output "$OUTPUT" '{target: {
+              app: {context: $app, platforms: [$platform]},
+              image: {context: $notices, contexts: {app: "target:app"}, platforms: [$platform],
+                "dockerfile-inline": "FROM app\nCOPY . /usr/share/licenses/\($repo)/\n",
+                output: [$output]}}}' > "$RUNNER_TEMP/bake.json"
+          docker buildx bake -f "$RUNNER_TEMP/bake.json" --metadata-file "$RUNNER_TEMP/metadata.json" image
 
       - name: Export digest
-        env:
-          DIGEST: ${{ steps.build.outputs.digest }}
+        id: digest
+        if: inputs.push
         run: |
+          digest=$(jq -er '.image["containerimage.digest"]' "$RUNNER_TEMP/metadata.json")
           mkdir -p "$RUNNER_TEMP/digests"
-          touch "$RUNNER_TEMP/digests/${DIGEST#sha256:}"
+          touch "$RUNNER_TEMP/digests/${digest#sha256:}"
 
       # "Re-run failed jobs" reuses this run's artifacts instead of building again.
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: inputs.push
         with:
           name: digests-${{ matrix.arch }}
           path: ${{ runner.temp }}/digests/*
@@ -74,6 +118,7 @@ jobs:
 
   merge:
     needs: build
+    if: inputs.push
     runs-on: ubuntu-26.04
     steps:
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
