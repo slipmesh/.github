@@ -27,6 +27,8 @@ printf 'FROM scratch\nARG TARGETARCH\nCOPY target/${TARGETARCH}/release/app /app
 printf '*\n!target/*/release/app\n' > .dockerignore
 echo app > "target/$arch/release/app"
 for n in THIRD-PARTY-NOTICES COPYRIGHT-rust-std.html COPYRIGHT-musl; do echo "$n" > "target/$arch/release/$n"; done
+# What the artifact store leaves after image.yml restores the binaries' executable bit.
+chmod +x target/"$arch"/release/*
 
 # run: exit status
 run() {
@@ -41,6 +43,8 @@ check "builds" "0" "$(run)"
 check "the caller's image is kept" "app" "$(cat "$work/repo/out/app" 2>/dev/null)"
 check "notices on top of it" "THIRD-PARTY-NOTICES COPYRIGHT-rust-std.html COPYRIGHT-musl" \
   "$(for n in THIRD-PARTY-NOTICES COPYRIGHT-rust-std.html COPYRIGHT-musl; do cat "$work/repo/out/usr/share/licenses/demo/$n" 2>/dev/null; done | tr '\n' ' ' | sed 's/ $//')"
+check "notices are plain files" "644 644 644" \
+  "$(for n in THIRD-PARTY-NOTICES COPYRIGHT-rust-std.html COPYRIGHT-musl; do stat -c %a "$work/repo/out/usr/share/licenses/demo/$n" 2>/dev/null; done | tr '\n' ' ' | sed 's/ $//')"
 check "nothing else in the licenses directory" "3" "$(ls "$work/repo/out/usr/share/licenses/demo" 2>/dev/null | wc -l | tr -d ' ')"
 
 # The release path, against a registry the test runs: push by digest, read the digest the way the
