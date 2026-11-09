@@ -40,17 +40,23 @@ check "crate notices cover both arches' graphs" \
 check "std notices from the toolchain" "std" "$(cat "$work/$out/COPYRIGHT-rust-std.html")"
 check "musl notices from the musl package" "musl" "$(cat "$work/$out/COPYRIGHT-musl")"
 
-# run_stage: exit status, then the staged files
+# run_stage: exit status, then the tar's entries with their modes
 run_stage() {
+  rm -rf "$work/staged"
   (cd "$work" && env ARCH=amd64 RUST_TARGET=$target BINARIES="a b" \
     bash -euo pipefail -c "$stage" >/dev/null 2>&1)
-  echo $?; (cd "$work" && find staged -type f | LC_ALL=C sort)
+  echo $?
+  tar -tvf "$work/staged/binaries-amd64.tar" 2>/dev/null | awk '$1 !~ /^d/ {print $1, $NF}' | LC_ALL=C sort -k2
 }
-touch "$work/$out/a" "$work/$out/b"
-check "binaries and notices staged at the TARGETARCH path" \
-  "0 staged/amd64/release/COPYRIGHT-musl staged/amd64/release/COPYRIGHT-rust-std.html staged/amd64/release/THIRD-PARTY-NOTICES staged/amd64/release/a staged/amd64/release/b" \
+printf 'a\n' > "$work/$out/a"; printf 'b\n' > "$work/$out/b"; chmod 0755 "$work/$out/a" "$work/$out/b"
+chmod 0644 "$work/$out"/COPYRIGHT-* "$work/$out/THIRD-PARTY-NOTICES"
+# What cargo-about and cp may leave: the stage sets the modes itself.
+chmod 0600 "$work/$out/THIRD-PARTY-NOTICES"
+check "one tar of the binaries and notices at the TARGETARCH path, modes set" \
+  "0 -rw-r--r-- amd64/release/COPYRIGHT-musl -rw-r--r-- amd64/release/COPYRIGHT-rust-std.html -rw-r--r-- amd64/release/THIRD-PARTY-NOTICES -rwxr-xr-x amd64/release/a -rwxr-xr-x amd64/release/b" \
   "$(run_stage | tr '\n' ' ' | sed 's/ $//')"
-rm -rf "$work/staged" "$work/$out/THIRD-PARTY-NOTICES"
+check "the tar is all the artifact holds" "binaries-amd64.tar" "$(ls "$work/staged")"
+rm -f "$work/$out/THIRD-PARTY-NOTICES"
 check "no notices, no artifact" "1" "$(run_stage | head -1)"
 
 rm -f "$work/sysroot/share/doc/rust/COPYRIGHT-library.html"

@@ -19,6 +19,10 @@ on:
 permissions:
   contents: read
 
+env:
+  # renovate: datasource=crate depName=git-cliff
+  GIT_CLIFF_VERSION: 2.14.2
+
 jobs:
   release-pr:
     runs-on: ubuntu-26.04
@@ -32,7 +36,7 @@ jobs:
 
       - uses: taiki-e/install-action@cfdb7ed4ccc7c7dce37759eae89dc5674b469b39 # v2.90.3
         with:
-          tool: git-cliff@2.14.2
+          tool: git-cliff@${{ env.GIT_CLIFF_VERSION }}
 
       - if: hashFiles('Cargo.lock') != ''
         uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable

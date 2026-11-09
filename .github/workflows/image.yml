@@ -28,7 +28,6 @@ permissions:
 
 env:
   IMAGE: ${{ inputs.image || format('ghcr.io/{0}', github.repository) }}
-  REPO_NAME: ${{ github.event.repository.name }}
 
 jobs:
   build:
@@ -44,12 +43,23 @@ jobs:
             runner: ubuntu-26.04-arm
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         if: inputs.push
         with:
           name: binaries-${{ matrix.arch }}
-          path: target/
+          path: ${{ runner.temp }}/artifact
+
+      - name: Unpack the binaries and notices
+        id: unpack
+        if: inputs.push
+        env:
+          ARCH: ${{ matrix.arch }}
+        run: |
+          mkdir -p target
+          tar -xf "$RUNNER_TEMP/artifact/binaries-$ARCH.tar" -C target
 
       # The Dockerfile and its .dockerignore are what a check is after, not the binaries: empty
       # files at the paths the release build stages them at fail the same COPY a release would.
@@ -66,9 +76,6 @@ jobs:
           for name in "${names[@]}" THIRD-PARTY-NOTICES COPYRIGHT-rust-std.html COPYRIGHT-musl; do
             : > "target/$ARCH/release/$name"
           done
-
-      - name: Restore the executable bit the artifact store drops
-        run: chmod +x target/${{ matrix.arch }}/release/*
 
       - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
 
@@ -93,7 +100,7 @@ jobs:
             install -m 0644 "target/$ARCH/release/$notice" "$notices/"
           done
           jq -n --arg app "$PWD" --arg notices "$notices" --arg platform "linux/$ARCH" \
-            --arg repo "$REPO_NAME" --arg output "$OUTPUT" '{target: {
+            --arg repo "${GITHUB_REPOSITORY#*/}" --arg output "$OUTPUT" '{target: {
               app: {context: $app, platforms: [$platform]},
               image: {context: $notices, contexts: {app: "target:app"}, platforms: [$platform],
                 "dockerfile-inline": "FROM app\nCOPY . /usr/share/licenses/\($repo)/\n",
