@@ -1,10 +1,16 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "extends": ["github>slipmesh/.github"],
+  "extends": [
+    "github>slipmesh/.github",
+    "customManagers:githubActionsVersions"
+  ],
   "packageRules": [
     {
-      "description": "An action update reaches no caller until a release of this repository, and none is cut for one: one standing pull request collects them, merged when that release is prepared.",
-      "matchManagers": ["github-actions"],
+      "description": "An action or CI tool update reaches no caller until a release of this repository, and none is cut for one: one standing pull request collects them, merged when that release is prepared.",
+      "matchManagers": [
+        "github-actions",
+        "custom.regex"
+      ],
       "groupName": "github actions",
       "groupSlug": "github-actions"
     }

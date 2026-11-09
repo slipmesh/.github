@@ -14,7 +14,9 @@ A Rust repository calling these workflows carries three files at its root:
   template the notices are rendered from. A repository that ships no binaries can leave them out; one that has them
   gets them rendered in every pull request too, so a license `about.toml` does not accept fails there.
 
-Every binary ships with three notices, staged next to it at `<arch>/release/` in the `binaries-<arch>` artifact:
+Every binary ships with three notices, staged next to it at `<arch>/release/` in the `binaries-<arch>` artifact. The
+artifact is one tar of that tree, since the artifact store drops file modes: binaries arrive as 0755, notices as
+0644, and `image.yml` and `release.yml` unpack it.
 
 - `THIRD-PARTY-NOTICES`, the crates it links, covering both arches' dependency graphs, so every copy is the same.
 - `COPYRIGHT-rust-std.html`, the standard library and what it is built from, as the toolchain ships it.
@@ -22,12 +24,27 @@ Every binary ships with three notices, staged next to it at `<arch>/release/` in
 
 `image.yml` lays them on top of the image the caller's Dockerfile builds, at `/usr/share/licenses/<repo>/`, from a
 build context of their own: the Dockerfile and its `.dockerignore` need nothing for them. `release.yml` with
-`download-binaries` attaches them to the GitHub Release.
+`download-binaries` attaches them to the GitHub Release, set aside before `prepare` runs, and fails when another
+asset has the same file name.
 
 A repository that ships an image checks its Dockerfile in every pull request by calling `image.yml` with `push: false`
 and `binaries` naming what the Dockerfile copies. That builds the image from empty files at the binaries' paths and
 pushes nothing, so a `COPY` the release build would fail on fails the pull request. The job still needs
-`packages: write`, which `image.yml` declares for its release build.
+`packages: write`, which `image.yml` declares for its release build: a pull request from a fork, whose token is
+read-only, cannot run it.
+
+## Checking a change before pushing it
+
+`tests/*.sh` test the workflows' steps by running them. `tests/image.sh` builds with `docker buildx` and skips the
+builds where there is none; with `TEST_REGISTRY` naming a registry such as `localhost:5000`, it also pushes by digest.
+[zizmor](https://docs.zizmor.sh/) audits the workflows for unsafe defaults:
+
+```sh
+for t in tests/*.sh; do [ "$t" = tests/lib.sh ] || "$t"; done
+zizmor --offline --config .github/zizmor.yml .github/workflows
+```
+
+CI runs the tests, not zizmor.
 
 ## Renovate preset
 
@@ -71,6 +88,7 @@ Repositories whose pins move only in lockstep with checksums - `versions.env` in
 `talos-installer` - carry no `renovate.json`.
 
 A repository changes any of this for itself by adding keys next to `extends` in its own `renovate.json`. This one
-does: the actions its workflows use arrive in one pull request, updated on every run as new versions appear. An
+does: the actions its workflows use, and the CI tools they pin as `*_VERSION` variables with a `# renovate:`
+comment, arrive in one pull request, updated on every run as new versions appear. An
 action update reaches no caller until a release of this repository, and none is cut for one, so that pull request is
 merged when the next release is prepared.

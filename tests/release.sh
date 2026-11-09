@@ -1,9 +1,11 @@
 #!/usr/bin/env bash
-# The GitHub Release step of release.yml, with gh replaced on PATH: the flags it creates the release
-# with, its notes, and that a rerun uploads the assets again instead of failing.
+# The steps of release.yml, with gh replaced on PATH: unpacking the binaries artifacts, the flags
+# the release is created with, its notes and notices, and that a rerun uploads the assets again
+# instead of failing.
 set -uo pipefail
 . "$(dirname "$0")/lib.sh"
 script=$(step .github/workflows/release.yml github-release release) || { echo "FAIL: no step release"; exit 1; }
+unpack=$(step .github/workflows/release.yml github-release unpack) || { echo "FAIL: no step unpack"; exit 1; }
 
 work=$(mktemp -d); bin=$work/bin; mkdir "$bin"
 # gh records its arguments; `gh release view` succeeds when $EXISTS is set.
@@ -69,10 +71,25 @@ check "notes of a section below the top one" \
   "$(printf '## [1.14.5+sm.1] - 2026-11-02\n\n### Features ✨\n\n- First')" \
   "$(cat "$work/notes.md")"
 check "no section for the tag, no release" "" "$(run v1.14.5+sm.3 false false '')"
-n=binaries/amd64/release
+# Unpacking: every arch's tar into binaries/, and the notices set aside where prepare cannot
+# reach them.
+for a in amd64 arm64; do
+  mkdir -p "$work/staged/$a/release"; echo "$a" > "$work/staged/$a/release/tool"; chmod 0755 "$work/staged/$a/release/tool"
+  for n in THIRD-PARTY-NOTICES COPYRIGHT-rust-std.html COPYRIGHT-musl; do echo "$n" > "$work/staged/$a/release/$n"; done
+  mkdir -p "$work/artifacts"; tar -C "$work/staged" -cf "$work/artifacts/binaries-$a.tar" "$a"
+done
+(cd "$work" && env RUNNER_TEMP="$work" bash -euo pipefail -c "$unpack" >/dev/null 2>&1)
+check "both arches unpacked, modes kept" "755 binaries/amd64/release/tool 755 binaries/arm64/release/tool" \
+  "$(cd "$work" && stat -c '%a %n' binaries/*/release/tool | tr '\n' ' ' | sed 's/ $//')"
+check "notices set aside" "COPYRIGHT-musl COPYRIGHT-rust-std.html THIRD-PARTY-NOTICES" \
+  "$(ls "$work/notices" 2>/dev/null | LC_ALL=C sort | tr '\n' ' ' | sed 's/ $//')"
+
+n=\$RUNNER_TEMP/notices
 check "downloaded binaries bring their notices" \
   "release create v0.2.5 a $n/THIRD-PARTY-NOTICES $n/COPYRIGHT-rust-std.html $n/COPYRIGHT-musl --verify-tag --title v0.2.5 --notes-file \$RUNNER_TEMP/notes.md --latest=true --prerelease=false" \
   "$(DOWNLOAD=true run v0.2.5 true false a)"
+check "an asset named like a notice fails instead of clashing" "" \
+  "$(DOWNLOAD=true run v0.2.5 true false dist/THIRD-PARTY-NOTICES)"
 check "rerun uploads the assets again" "release upload v0.2.5 a b --clobber" "$(run v0.2.5 true false 'a b' 1)"
 check "rerun without assets"           ""                                   "$(run v0.2.5 true false '' 1)"
 exit $fail

@@ -9,11 +9,23 @@ on:
 permissions:
   contents: read
 
+# The tools a check runs are pinned so that a new release of one changes a pull request's result
+# only through the Renovate pull request that moves it here.
+env:
+  # renovate: datasource=crate depName=cargo-audit
+  CARGO_AUDIT_VERSION: 0.22.2
+  # renovate: datasource=crate depName=cargo-deny
+  CARGO_DENY_VERSION: 0.20.2
+  # renovate: datasource=crate depName=cargo-about
+  CARGO_ABOUT_VERSION: 0.9.3
+
 jobs:
   fmt:
     runs-on: ubuntu-26.04
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
         with:
@@ -27,31 +39,39 @@ jobs:
     runs-on: ubuntu-26.04
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - uses: taiki-e/install-action@cfdb7ed4ccc7c7dce37759eae89dc5674b469b39 # v2.90.3
         with:
-          tool: cargo-audit
+          tool: cargo-audit@${{ env.CARGO_AUDIT_VERSION }}
 
       - run: cargo audit
 
   # The caller's deny.toml is the policy: the licenses its own license can ship with, and the
   # registries and git sources it takes crates from. A repository without one fails here. One that
-  # ships binaries renders its notices too, over every target, so a license its about.toml does not
-  # accept fails the pull request rather than rust-build.yml's release build.
+  # ships binaries renders its notices too, over the targets rust-build.yml renders them for, so a
+  # license its about.toml does not accept fails the pull request rather than the release build.
   licenses:
     runs-on: ubuntu-26.04
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - uses: taiki-e/install-action@cfdb7ed4ccc7c7dce37759eae89dc5674b469b39 # v2.90.3
         with:
-          tool: cargo-deny,cargo-about
+          tool: cargo-deny@${{ env.CARGO_DENY_VERSION }},cargo-about@${{ env.CARGO_ABOUT_VERSION }}
 
       - run: cargo deny --locked check licenses bans sources
 
       - name: cargo about
         if: hashFiles('about.toml') != ''
-        run: cargo about generate --locked --workspace --fail -o /dev/null about.hbs
+        env:
+          NOTICE_TARGETS: x86_64-unknown-linux-musl aarch64-unknown-linux-musl
+        run: |
+          read -ra targets <<<"$NOTICE_TARGETS"
+          cargo about generate --locked --workspace --fail "${targets[@]/#/--target=}" -o /dev/null about.hbs
 
   test:
     runs-on: ${{ matrix.runner }}
@@ -65,6 +85,8 @@ jobs:
             runner: ubuntu-26.04-arm
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Install the musl toolchain
         run: sudo apt-get update && sudo apt-get install -y --no-install-recommends musl-tools

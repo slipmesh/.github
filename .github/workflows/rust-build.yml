@@ -1,5 +1,5 @@
 # The release binaries, built in the run that releases them, on each arch's own runner for the
-# musl target. They are uploaded as `binaries-<arch>` at `<arch>/release/<name>`, the
+# musl target. They are uploaded as `binaries-<arch>`, a tar of `<arch>/release/<name>`, the
 # `target/${TARGETARCH}/release/<name>` path image.yml's Dockerfile copies from, together with the
 # notices of everything linked into them, which the image and the GitHub Release carry:
 # THIRD-PARTY-NOTICES for the crates, COPYRIGHT-rust-std.html for the standard library and
@@ -21,6 +21,10 @@ on:
 permissions:
   contents: read
 
+env:
+  # renovate: datasource=crate depName=cargo-about
+  CARGO_ABOUT_VERSION: 0.9.3
+
 jobs:
   build:
     runs-on: ${{ matrix.runner }}
@@ -36,6 +40,8 @@ jobs:
             runner: ubuntu-26.04-arm
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Install the musl toolchain
         run: sudo apt-get update && sudo apt-get install -y --no-install-recommends musl-tools
@@ -57,7 +63,7 @@ jobs:
 
       - uses: taiki-e/install-action@cfdb7ed4ccc7c7dce37759eae89dc5674b469b39 # v2.90.3
         with:
-          tool: cargo-about
+          tool: cargo-about@${{ env.CARGO_ABOUT_VERSION }}
 
       # Licenses such as BSD-3-Clause and MIT hold only if their notices travel with the binary.
       # The caller's about.toml lists the accepted licenses and about.hbs renders them; --fail
@@ -79,6 +85,7 @@ jobs:
           cp "$(rustc --print sysroot)/share/doc/rust/COPYRIGHT-library.html" "$out/COPYRIGHT-rust-std.html"
           cp "$MUSL_COPYRIGHT" "$out/COPYRIGHT-musl"
 
+      # The artifact store drops file modes, so the staged tree travels as one tar that keeps them.
       - name: Stage binaries and notices at their TARGETARCH path
         id: stage
         env:
@@ -87,15 +94,21 @@ jobs:
           BINARIES: ${{ inputs.binaries }}
         run: |
           read -ra names <<<"$BINARIES"
-          mkdir -p "staged/$ARCH/release"
-          for name in "${names[@]}" THIRD-PARTY-NOTICES COPYRIGHT-rust-std.html COPYRIGHT-musl; do
-            cp "target/$RUST_TARGET/release/$name" "staged/$ARCH/release/"
+          dir=staged/$ARCH/release
+          mkdir -p "$dir"
+          for name in "${names[@]}"; do
+            install -m 0755 "target/$RUST_TARGET/release/$name" "$dir/"
           done
+          for notice in THIRD-PARTY-NOTICES COPYRIGHT-rust-std.html COPYRIGHT-musl; do
+            install -m 0644 "target/$RUST_TARGET/release/$notice" "$dir/"
+          done
+          tar -C staged -cf "staged/binaries-$ARCH.tar" "$ARCH"
+          rm -r "staged/$ARCH"
 
       # "Re-run failed jobs" reuses this run's artifacts instead of building again.
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: binaries-${{ matrix.arch }}
-          path: staged/
+          path: staged/binaries-${{ matrix.arch }}.tar
           if-no-files-found: error
           retention-days: 14
