@@ -33,6 +33,19 @@ pushes nothing, so a `COPY` the release build would fail on fails the pull reque
 `packages: write`, which `image.yml` declares for its release build: a pull request from a fork, whose token is
 read-only, cannot run it.
 
+## Checking a change before pushing it
+
+`tests/*.sh` test the workflows' steps by running them. `tests/image.sh` builds with `docker buildx` and skips the
+builds where there is none; with `TEST_REGISTRY` naming a registry such as `localhost:5000`, it also pushes by digest.
+[zizmor](https://docs.zizmor.sh/) audits the workflows for unsafe defaults:
+
+```sh
+for t in tests/*.sh; do [ "$t" = tests/lib.sh ] || "$t"; done
+zizmor --offline --config .github/zizmor.yml .github/workflows
+```
+
+CI runs the tests, not zizmor.
+
 ## Renovate preset
 
 [`default.json`](default.json) is the Renovate preset these repositories share. Renovate runs self-hosted, hourly
