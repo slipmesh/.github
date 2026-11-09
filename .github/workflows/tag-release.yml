@@ -20,7 +20,9 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      # The job pushes the tag with git, so the checkout keeps its credentials; it uploads no
+      # artifact and runs nothing from the checkout.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1 zizmor: ignore[artipacked]
 
       - name: Tag the commit
         id: tag
