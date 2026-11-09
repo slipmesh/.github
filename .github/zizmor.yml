@@ -1,0 +1,8 @@
+rules:
+  # These two jobs push with git - the release branch, the tag - so their checkouts keep the
+  # credentials. Neither uploads an artifact; release-pr.yml runs only the caller's own bump
+  # script, tag-release.yml nothing from the checkout.
+  artipacked:
+    ignore:
+      - release-pr.yml
+      - tag-release.yml

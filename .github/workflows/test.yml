@@ -27,7 +27,7 @@ jobs:
         with:
           tool: zizmor@${{ env.ZIZMOR_VERSION }}
 
-      - run: zizmor --offline .github/workflows
+      - run: zizmor --offline --config .github/zizmor.yml .github/workflows
 
   tests:
     runs-on: ubuntu-26.04
