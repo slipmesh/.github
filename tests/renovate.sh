@@ -72,4 +72,23 @@ git -C "$tmp/kube" add Cargo.toml && git -C "$tmp/kube" commit -qm fixture
 got=$(branches "$tmp/kube") || { echo "FAIL kube and k8s-openapi share one branch: no result"; exit 1; }
 check "kube and k8s-openapi share one branch" "renovate/kube" "$(paste -sd' ' <<<"$got")"
 
+# Compatible updates share one branch, so they cannot conflict with each other on neighbouring Cargo.toml
+# lines; a 0.x minor breaks the API and keeps a branch of its own.
+scratch_repo "$tmp/nonmajor"
+cat >"$tmp/nonmajor/Cargo.toml" <<'EOF2'
+[package]
+name = "fixture"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+serde_json = "1.0.100"
+tokio = "1.40.0"
+hex = "0.4.0"
+base64 = "0.21.0"
+EOF2
+git -C "$tmp/nonmajor" add Cargo.toml && git -C "$tmp/nonmajor" commit -qm fixture
+got=$(branches "$tmp/nonmajor") || { echo "FAIL compatible updates share one branch: no result"; exit 1; }
+check "compatible updates share one branch" "renovate/base64-0.x renovate/non-major" "$(paste -sd' ' <<<"$got")"
+
 exit $fail
