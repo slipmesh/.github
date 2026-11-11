@@ -31,6 +31,11 @@
       "groupName": "kube"
     },
     {
+      "description": "sliplib's crates are tagged together from one workspace; moved one at a time, two copies of a crate meet in one build and their types no longer match.",
+      "matchPackageNames": ["slipmesh/sliplib"],
+      "groupName": "sliplib"
+    },
+    {
       "description": "Renovate takes only the newest version of each bucket, and minor and patch share one by default: a newer minor would take the patch's place and then be disabled below, leaving no update at all.",
       "matchBaseBranches": ["/^release-\\d+\\.\\d+$/"],
       "separateMinorPatch": true

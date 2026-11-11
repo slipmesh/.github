@@ -37,6 +37,8 @@ read-only, cannot run it.
 
 `tests/*.sh` test the workflows' steps by running them. `tests/image.sh` builds with `docker buildx` and skips the
 builds where there is none; with `TEST_REGISTRY` naming a registry such as `localhost:5000`, it also pushes by digest.
+`tests/renovate.sh` runs Renovate through `npx`, which needs Node 24 or later, and its lookups on github.com need a
+token in `GITHUB_COM_TOKEN`, such as `GITHUB_COM_TOKEN=$(gh auth token)`.
 [zizmor](https://docs.zizmor.sh/) audits the workflows for unsafe defaults:
 
 ```sh
@@ -70,6 +72,9 @@ What the preset sets on top of `config:recommended`:
   in step with a release of this repository.
 - **`kube` and `k8s-openapi` move together.** `kube` pins the `k8s-openapi` minor it builds against, so they
   arrive as one pull request instead of two that each fail to build.
+- **`sliplib` crates move together.** They are tagged together from one workspace, and a crate moved alone puts
+  two copies of the crates it depends on into one build, whose types no longer match. Every crate from
+  `slipmesh/sliplib` arrives in one pull request.
 - **Every release branch, fixes only.** Renovate works on the default branch and on each `release-X.Y` branch,
   every one checked on its own. A release branch gets patch and digest updates and no minor or major one, so a
   dependency tagged by Talos line stays on the line of the branch it is on. A newer patch is offered even where a
