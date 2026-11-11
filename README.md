@@ -70,6 +70,10 @@ What the preset sets on top of `config:recommended`:
   `git-cliff` files in the changelog, and nothing Renovate opens takes the `chore: release vX` shape.
 - **The shared workflows stay put.** A caller's `uses: slipmesh/.github/...@vX` is left alone: it moves by hand,
   in step with a release of this repository.
+- **Compatible updates in one pull request.** Every minor and patch update from 1.0 up, and every patch below
+  it, arrives in one `non-major` pull request per branch. Apart, each rewrites a neighbouring line of
+  `Cargo.toml`, and every merge leaves the rest conflicting until the next run rebases them. A 0.x minor changes
+  the API and keeps a pull request of its own, as does a major; `kube` and `sliplib` keep their own groups.
 - **`kube` and `k8s-openapi` move together.** `kube` pins the `k8s-openapi` minor it builds against, so they
   arrive as one pull request, a `kube` major included, instead of two that each fail to build.
 - **`sliplib` crates move together.** They are tagged together from one workspace, and a crate moved alone puts

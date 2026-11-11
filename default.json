@@ -20,6 +20,20 @@
       "semanticCommitType": "ci"
     },
     {
+      "description": "Compatible updates arrive as one pull request: apart, each rewrites a neighbouring line of Cargo.toml, and every merge leaves the others conflicting until Renovate rebases them.",
+      "matchUpdateTypes": ["minor", "patch"],
+      "matchCurrentVersion": "!/^0\\./",
+      "groupName": "non-major",
+      "groupSlug": "non-major"
+    },
+    {
+      "description": "Below 1.0 only a patch is compatible; a 0.x minor changes the API and keeps a pull request of its own.",
+      "matchUpdateTypes": ["patch"],
+      "matchCurrentVersion": "/^0\\./",
+      "groupName": "non-major",
+      "groupSlug": "non-major"
+    },
+    {
       "description": "The shared workflows are called by an immutable tag that moves by hand, in step with a release of this repository.",
       "matchManagers": ["github-actions"],
       "matchPackageNames": ["slipmesh/.github"],
