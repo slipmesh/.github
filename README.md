@@ -37,6 +37,8 @@ read-only, cannot run it.
 
 `tests/*.sh` test the workflows' steps by running them. `tests/image.sh` builds with `docker buildx` and skips the
 builds where there is none; with `TEST_REGISTRY` naming a registry such as `localhost:5000`, it also pushes by digest.
+`tests/renovate.sh` runs Renovate through `npx`, which needs Node 24, and its lookups on github.com need a token in
+`GITHUB_COM_TOKEN`, such as `GITHUB_COM_TOKEN=$(gh auth token)`.
 [zizmor](https://docs.zizmor.sh/) audits the workflows for unsafe defaults:
 
 ```sh
