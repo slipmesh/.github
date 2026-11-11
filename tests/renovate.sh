@@ -55,4 +55,21 @@ git -C "$tmp/sliplib" add Cargo.toml && git -C "$tmp/sliplib" commit -qm fixture
 got=$(branches "$tmp/sliplib") || { echo "FAIL sliplib crates share one branch: no result"; exit 1; }
 check "sliplib crates share one branch" "renovate/sliplib" "$(paste -sd' ' <<<"$got")"
 
+# kube pins the k8s-openapi minor it builds against. A kube major needs a k8s-openapi minor; in two branches,
+# neither builds alone.
+scratch_repo "$tmp/kube"
+cat >"$tmp/kube/Cargo.toml" <<'EOF2'
+[package]
+name = "fixture"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+kube = "4.2.0"
+k8s-openapi = "0.28.0"
+EOF2
+git -C "$tmp/kube" add Cargo.toml && git -C "$tmp/kube" commit -qm fixture
+got=$(branches "$tmp/kube") || { echo "FAIL kube and k8s-openapi share one branch: no result"; exit 1; }
+check "kube and k8s-openapi share one branch" "renovate/kube" "$(paste -sd' ' <<<"$got")"
+
 exit $fail

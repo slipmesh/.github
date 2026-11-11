@@ -26,9 +26,10 @@
       "enabled": false
     },
     {
-      "description": "kube pins the k8s-openapi minor it builds against, and two k8s-openapi versions in one build fail its build script.",
+      "description": "kube pins the k8s-openapi minor it builds against, and two k8s-openapi versions in one build fail its build script. A kube major and the k8s-openapi minor it needs would otherwise land in two branches, each failing to build alone.",
       "matchPackageNames": ["kube", "kube-*", "k8s-openapi"],
-      "groupName": "kube"
+      "groupName": "kube",
+      "separateMajorMinor": false
     },
     {
       "description": "sliplib's crates are tagged together from one workspace; moved one at a time, two copies of a crate meet in one build and their types no longer match.",
