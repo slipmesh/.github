@@ -31,7 +31,7 @@ jobs:
       # tests/renovate.sh runs Renovate itself, which needs a newer Node than the runner's.
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version: 24
+          node-version: 24.22.2
 
       - name: Run tests/*.sh
         env:
