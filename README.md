@@ -71,7 +71,7 @@ What the preset sets on top of `config:recommended`:
 - **The shared workflows stay put.** A caller's `uses: slipmesh/.github/...@vX` is left alone: it moves by hand,
   in step with a release of this repository.
 - **`kube` and `k8s-openapi` move together.** `kube` pins the `k8s-openapi` minor it builds against, so they
-  arrive as one pull request instead of two that each fail to build.
+  arrive as one pull request, a `kube` major included, instead of two that each fail to build.
 - **`sliplib` crates move together.** They are tagged together from one workspace, and a crate moved alone puts
   two copies of the crates it depends on into one build, whose types no longer match. Every crate from
   `slipmesh/sliplib` arrives in one pull request.
