@@ -1,7 +1,8 @@
 # slipmesh/.github
 
 Shared configuration for the slipmesh repositories: the reusable workflows under
-[`.github/workflows/`](.github/workflows/), and the Renovate preset described below.
+[`.github/workflows/`](.github/workflows/), the Renovate preset, and where the repositories publish
+images, all described below.
 
 ## Third-party licenses
 
@@ -45,6 +46,23 @@ zizmor --offline --config .github/zizmor.yml .github/workflows
 ```
 
 CI runs the tests, not zizmor.
+
+## Where images are published
+
+Every image a slipmesh repository publishes goes to ghcr.io under that repository's name:
+
+- `ghcr.io/slipmesh/<repo>` is the repository's main image, if it has one.
+- `ghcr.io/slipmesh/<repo>/<artifact>` is anything else it publishes, nested further where one
+  artifact lists others: `<repo>/extensions` is a catalogue of the images under
+  `<repo>/extensions/<name>`.
+- A tag is a version and nothing else: the release tag with `+` as `-`, since OCI tags cannot hold
+  a `+`, or `sha-<commit>` for a build. A variant of an image goes into its path, not its tag.
+  `sha-<commit>-<arch>` tags are the per-arch steps of a build that a manifest combines.
+- A published path is not renamed or deleted while anything that runs refers to it; a new path
+  starts with the next release and the old one stays.
+
+The package is linked to the repository that publishes it, so its permissions and visibility
+follow that repository.
 
 ## Renovate preset
 
