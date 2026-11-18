@@ -38,10 +38,15 @@ read-only, cannot run it.
 `release-pr.yml` pushes the release branch and opens its pull request with a token of a GitHub App: what
 `GITHUB_TOKEN` pushes or opens starts no workflow, so the pull request would get no CI. The organisation needs:
 
-- a GitHub App of its own, installed on the repositories that call `release-pr.yml`, with the repository
-  permissions Contents and Pull requests set to Read and write, and no webhook;
+- a GitHub App of its own, created under the organisation's Settings → Developer settings → GitHub Apps,
+  installable only on that account, with the repository permissions Contents and Pull requests set to Read and
+  write and no webhook, and installed on the repositories that call `release-pr.yml`;
 - the app's client ID in the organisation variable `RELEASE_APP_CLIENT_ID`;
-- a private key of the app in the organisation secret `RELEASE_APP_PRIVATE_KEY`.
+- a private key of the app, generated on its settings page, in the organisation secret `RELEASE_APP_PRIVATE_KEY`.
+
+The variable and the secret need repository access covering every caller; a repository without them fails at the
+token step. The key mints a token for any repository the app is installed on, so whoever can add a workflow to a
+repository that sees the secret can write to all of them: give the secret only to the callers.
 
 The caller passes the secret on:
 

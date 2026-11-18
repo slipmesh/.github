@@ -117,6 +117,8 @@ print("secret required:", wf[True]["workflow_call"].get("secrets", {}).get("RELE
 print("app action:", app.get("uses", "").split("@")[0])
 print("client id:", app.get("with", {}).get("client-id"))
 print("private key:", app.get("with", {}).get("private-key"))
+print("token scope:", sorted(k for k in app.get("with", {}) if k.startswith("permission-") or k in ("owner", "repositories")))
+print("checkout keeps credentials:", checkout.get("with", {}).get("persist-credentials", True))
 print("token before checkout:", "app-token" in ids and ids.index("app-token") < steps.index(checkout))
 print("checkout token:", checkout.get("with", {}).get("token") == token)
 print("gh token:", steps[ids.index("open")]["env"]["GH_TOKEN"] == token)
@@ -128,6 +130,8 @@ check "release PR is pushed and opened as the GitHub App" \
 app action: actions/create-github-app-token
 client id: \${{ vars.RELEASE_APP_CLIENT_ID }}
 private key: \${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+token scope: ['permission-contents', 'permission-pull-requests']
+checkout keeps credentials: True
 token before checkout: True
 checkout token: True
 gh token: True
