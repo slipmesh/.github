@@ -15,7 +15,7 @@ env:
   # renovate: datasource=crate depName=cargo-audit
   CARGO_AUDIT_VERSION: 0.23.0
   # renovate: datasource=crate depName=cargo-deny
-  CARGO_DENY_VERSION: 0.20.2
+  CARGO_DENY_VERSION: 0.21.0
   # renovate: datasource=crate depName=cargo-about
   CARGO_ABOUT_VERSION: 0.9.3
 
@@ -27,7 +27,7 @@ jobs:
         with:
           persist-credentials: false
 
-      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
+      - uses: dtolnay/rust-toolchain@39008827e6b4319a349e9a42dfc90579dd25f1ca # stable
         with:
           components: rustfmt
 
@@ -42,7 +42,7 @@ jobs:
         with:
           persist-credentials: false
 
-      - uses: taiki-e/install-action@cfdb7ed4ccc7c7dce37759eae89dc5674b469b39 # v2.90.3
+      - uses: taiki-e/install-action@75a7c0f87bd666af3cdb75c5b9e9d03ab6044e6f # v2.90.6
         with:
           tool: cargo-audit@${{ env.CARGO_AUDIT_VERSION }}
 
@@ -59,7 +59,7 @@ jobs:
         with:
           persist-credentials: false
 
-      - uses: taiki-e/install-action@cfdb7ed4ccc7c7dce37759eae89dc5674b469b39 # v2.90.3
+      - uses: taiki-e/install-action@75a7c0f87bd666af3cdb75c5b9e9d03ab6044e6f # v2.90.6
         with:
           tool: cargo-deny@${{ env.CARGO_DENY_VERSION }},cargo-about@${{ env.CARGO_ABOUT_VERSION }}
 
@@ -91,7 +91,7 @@ jobs:
       - name: Install the musl toolchain
         run: sudo apt-get update && sudo apt-get install -y --no-install-recommends musl-tools
 
-      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
+      - uses: dtolnay/rust-toolchain@39008827e6b4319a349e9a42dfc90579dd25f1ca # stable
         with:
           targets: ${{ matrix.rust_target }}
           components: clippy
