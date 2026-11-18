@@ -35,21 +35,13 @@ read-only, cannot run it.
 
 ## CI app
 
-What the workflows push or open with `GITHUB_TOKEN` starts no workflow, so whatever has to set CI off acts as the
-organisation's GitHub App instead. The organisation needs:
+`release-pr.yml` pushes and opens its pull request as the organisation's GitHub App. The organisation needs:
 
-- a GitHub App of its own, created under the organisation's Settings → Developer settings → GitHub Apps,
-  installable only on that account, with no webhook, and installed on the repositories that call these workflows;
-- the app's client ID in the organisation variable `CI_APP_CLIENT_ID`;
-- a private key of the app, generated on its settings page, in the organisation secret `CI_APP_PRIVATE_KEY`.
-
-Each workflow narrows its token to the permissions it needs, and the app has to grant at least those:
-`release-pr.yml`, which pushes the release branch and opens its pull request, needs the repository permissions
-Contents and Pull requests set to Read and write.
-
-The variable and the secret need repository access covering every caller; a repository without them fails at the
-token step. The key mints a token for any repository the app is installed on, so whoever can add a workflow to a
-repository that sees the secret can write to all of them: give the secret only to the callers.
+- a GitHub App (Settings → Developer settings → GitHub Apps), installable only on that account, without a
+  webhook, with Contents and Pull requests set to Read and write, installed on the calling repositories;
+- its client ID in the organisation variable `CI_APP_CLIENT_ID`;
+- its private key in the organisation secret `CI_APP_PRIVATE_KEY`, visible to the calling repositories only: the
+  key writes to every repository the app is installed on.
 
 The caller passes the secret on:
 

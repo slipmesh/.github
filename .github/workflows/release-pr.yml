@@ -2,10 +2,7 @@
 # version files moved to it, and CHANGELOG.md regenerated with git-cliff. Merging the PR releases
 # it through release-commit.yml. The commit is authored by github-actions[bot], so no personal
 # address reaches the history.
-#
-# GitHub starts no workflow for what GITHUB_TOKEN pushes or opens, so the branch and the PR go
-# through the organisation's GitHub App (README.md, "CI app"), and the PR's CI runs as on any
-# other.
+# What GITHUB_TOKEN pushes or opens starts no CI, so both go through the CI app (README.md).
 name: Release PR
 
 on:
