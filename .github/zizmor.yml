@@ -1,9 +1,7 @@
 # zizmor reads this when run before a push: zizmor --offline --config .github/zizmor.yml .github/workflows
 rules:
-  # These two jobs push with git - the release branch, the tag - so their checkouts keep the
-  # credentials. Neither uploads an artifact; release-pr.yml runs only the caller's own bump
-  # script, tag-release.yml nothing from the checkout.
+  # This job pushes the tag with git, so its checkout keeps the credentials. It uploads no artifact
+  # and runs nothing from the checkout.
   artipacked:
     ignore:
-      - release-pr.yml
       - tag-release.yml
