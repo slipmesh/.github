@@ -33,16 +33,19 @@ pushes nothing, so a `COPY` the release build would fail on fails the pull reque
 `packages: write`, which `image.yml` declares for its release build: a pull request from a fork, whose token is
 read-only, cannot run it.
 
-## Release PR
+## CI app
 
-`release-pr.yml` pushes the release branch and opens its pull request with a token of a GitHub App: what
-`GITHUB_TOKEN` pushes or opens starts no workflow, so the pull request would get no CI. The organisation needs:
+What the workflows push or open with `GITHUB_TOKEN` starts no workflow, so whatever has to set CI off acts as the
+organisation's GitHub App instead. The organisation needs:
 
 - a GitHub App of its own, created under the organisation's Settings → Developer settings → GitHub Apps,
-  installable only on that account, with the repository permissions Contents and Pull requests set to Read and
-  write and no webhook, and installed on the repositories that call `release-pr.yml`;
-- the app's client ID in the organisation variable `RELEASE_APP_CLIENT_ID`;
-- a private key of the app, generated on its settings page, in the organisation secret `RELEASE_APP_PRIVATE_KEY`.
+  installable only on that account, with no webhook, and installed on the repositories that call these workflows;
+- the app's client ID in the organisation variable `CI_APP_CLIENT_ID`;
+- a private key of the app, generated on its settings page, in the organisation secret `CI_APP_PRIVATE_KEY`.
+
+Each workflow narrows its token to the permissions it needs, and the app has to grant at least those:
+`release-pr.yml`, which pushes the release branch and opens its pull request, needs the repository permissions
+Contents and Pull requests set to Read and write.
 
 The variable and the secret need repository access covering every caller; a repository without them fails at the
 token step. The key mints a token for any repository the app is installed on, so whoever can add a workflow to a
@@ -59,7 +62,7 @@ jobs:
     with:
       bump: sed -i "s/^version = \".*\"/version = \"$VERSION_NUMBER\"/" Cargo.toml
     secrets:
-      RELEASE_APP_PRIVATE_KEY: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+      CI_APP_PRIVATE_KEY: ${{ secrets.CI_APP_PRIVATE_KEY }}
 ```
 
 ## Checking a change before pushing it

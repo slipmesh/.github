@@ -113,7 +113,7 @@ ids = [s.get("id") for s in steps]
 token = "${{ steps.app-token.outputs.token }}"
 app = steps[ids.index("app-token")] if "app-token" in ids else {}
 checkout = next((s for s in steps if s.get("uses", "").startswith("actions/checkout@")), {})
-print("secret required:", wf[True]["workflow_call"].get("secrets", {}).get("RELEASE_APP_PRIVATE_KEY", {}).get("required"))
+print("secret required:", wf[True]["workflow_call"].get("secrets", {}).get("CI_APP_PRIVATE_KEY", {}).get("required"))
 print("app action:", app.get("uses", "").split("@")[0])
 print("client id:", app.get("with", {}).get("client-id"))
 print("private key:", app.get("with", {}).get("private-key"))
@@ -128,8 +128,8 @@ print("GITHUB_TOKEN permissions:", job["permissions"])
 check "release PR is pushed and opened as the GitHub App" \
   "secret required: True
 app action: actions/create-github-app-token
-client id: \${{ vars.RELEASE_APP_CLIENT_ID }}
-private key: \${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+client id: \${{ vars.CI_APP_CLIENT_ID }}
+private key: \${{ secrets.CI_APP_PRIVATE_KEY }}
 token scope: ['permission-contents', 'permission-pull-requests']
 checkout keeps credentials: True
 token before checkout: True

@@ -4,7 +4,7 @@
 # address reaches the history.
 #
 # GitHub starts no workflow for what GITHUB_TOKEN pushes or opens, so the branch and the PR go
-# through the organisation's GitHub App (README.md, "Release PR"), and the PR's CI runs as on any
+# through the organisation's GitHub App (README.md, "CI app"), and the PR's CI runs as on any
 # other.
 name: Release PR
 
@@ -20,7 +20,7 @@ on:
         type: string
         default: ""
     secrets:
-      RELEASE_APP_PRIVATE_KEY:
+      CI_APP_PRIVATE_KEY:
         required: true
 
 permissions:
@@ -39,8 +39,8 @@ jobs:
       - id: app-token
         uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
         with:
-          client-id: ${{ vars.RELEASE_APP_CLIENT_ID }}
-          private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+          client-id: ${{ vars.CI_APP_CLIENT_ID }}
+          private-key: ${{ secrets.CI_APP_PRIVATE_KEY }}
           permission-contents: write
           permission-pull-requests: write
 
