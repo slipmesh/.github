@@ -33,6 +33,30 @@ pushes nothing, so a `COPY` the release build would fail on fails the pull reque
 `packages: write`, which `image.yml` declares for its release build: a pull request from a fork, whose token is
 read-only, cannot run it.
 
+## Release PR
+
+`release-pr.yml` pushes the release branch and opens its pull request with a token of a GitHub App: what
+`GITHUB_TOKEN` pushes or opens starts no workflow, so the pull request would get no CI. The organisation needs:
+
+- a GitHub App of its own, installed on the repositories that call `release-pr.yml`, with the repository
+  permissions Contents and Pull requests set to Read and write, and no webhook;
+- the app's client ID in the organisation variable `RELEASE_APP_CLIENT_ID`;
+- a private key of the app in the organisation secret `RELEASE_APP_PRIVATE_KEY`.
+
+The caller passes the secret on:
+
+```yaml
+jobs:
+  release-pr:
+    uses: slipmesh/.github/.github/workflows/release-pr.yml@<version>
+    permissions:
+      contents: read
+    with:
+      bump: sed -i "s/^version = \".*\"/version = \"$VERSION_NUMBER\"/" Cargo.toml
+    secrets:
+      RELEASE_APP_PRIVATE_KEY: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+```
+
 ## Checking a change before pushing it
 
 `tests/*.sh` test the workflows' steps by running them. `tests/image.sh` builds with `docker buildx` and skips the
