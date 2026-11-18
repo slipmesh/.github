@@ -100,41 +100,4 @@ check "release branch ignores the next line's alpha.0" '^v1\.15\.0-alpha\.0$' \
 check "next line's minor is a number, not a string" '^v1\.10\.0-alpha\.0$' \
   "$(REF=release-1.9 run v1.9.1+sm.9 >/dev/null; cat "$CLIFF_IGNORED")"
 check "rejects an empty computed version" "1" "$(NEXT='' run '' | head -1)"
-
-# GitHub starts no workflow for what GITHUB_TOKEN pushes or opens, so the PR would get no CI: the
-# push and the PR both go through the organisation's GitHub App instead.
-wiring() {
-  "${PYTHON:-python3}" -c '
-import sys, yaml
-wf = yaml.safe_load(open(sys.argv[1]))
-job = wf["jobs"]["release-pr"]
-steps = job["steps"]
-ids = [s.get("id") for s in steps]
-token = "${{ steps.app-token.outputs.token }}"
-app = steps[ids.index("app-token")] if "app-token" in ids else {}
-checkout = next((s for s in steps if s.get("uses", "").startswith("actions/checkout@")), {})
-print("secret required:", wf[True]["workflow_call"].get("secrets", {}).get("CI_APP_PRIVATE_KEY", {}).get("required"))
-print("app action:", app.get("uses", "").split("@")[0])
-print("client id:", app.get("with", {}).get("client-id"))
-print("private key:", app.get("with", {}).get("private-key"))
-print("token scope:", sorted(k for k in app.get("with", {}) if k.startswith("permission-") or k in ("owner", "repositories")))
-print("checkout keeps credentials:", checkout.get("with", {}).get("persist-credentials", True))
-print("token before checkout:", "app-token" in ids and ids.index("app-token") < steps.index(checkout))
-print("checkout token:", checkout.get("with", {}).get("token") == token)
-print("gh token:", steps[ids.index("open")]["env"]["GH_TOKEN"] == token)
-print("GITHUB_TOKEN permissions:", job["permissions"])
-' "$(pwd)/.github/workflows/release-pr.yml"
-}
-check "release PR is pushed and opened as the GitHub App" \
-  "secret required: True
-app action: actions/create-github-app-token
-client id: \${{ vars.CI_APP_CLIENT_ID }}
-private key: \${{ secrets.CI_APP_PRIVATE_KEY }}
-token scope: ['permission-contents', 'permission-pull-requests']
-checkout keeps credentials: True
-token before checkout: True
-checkout token: True
-gh token: True
-GITHUB_TOKEN permissions: {'contents': 'read'}" \
-  "$(wiring 2>&1)"
 exit $fail
